@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+
+<header>
+  <h1>Board game club</h1>
+  <h2>{{ user['name'] }}</h2>
+</header>
+<main>
+  <img src="{{ user['image'] }}" alt="{{ user['name'] }}" width=25%>
+  <p>{{ user['about'] }}</p>
+  <a href="">Edit</a>
+  <a href="" onclick="return confirm('Are you sure you want to delete your account?');">Delete account</a>
+  <p>Owned games</p>
+  <table>
+    <tr>
+      <th>Game</th>
+      <th>Players</th>
+      <th>Playing time</th>
+      <th>Complexity</th>
+      <th>Category</th>
+      <th>User Rating</th>
+      <th>Community Rating</th>
+    </tr>
+    {% for game in games %}
+    <tr>
+      <td>{{ game['name'] }}</td>
+      <td>{{ game['players_min'] }}</td>
+      <td>{{ game['time_min'] }} min</td>
+      <td>{{ game['weight'] }}</td>
+      <td>{{ game['category'][0] }}</td>
+      <td>{{ user['games'][game['name']] }}</td>
+      <td>{{ game['rating'] }}</td>
+      <td><a href="">Delete</a><td>
+    </tr>
+    {% endfor %}
+  </table>
+  <form method="post">
+    <input type=text name="game-name" value="">
+    <input type="submit" value="Add game">
+  </form >
+</main>
+{% endblock %}

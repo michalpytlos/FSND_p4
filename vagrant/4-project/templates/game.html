@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<header>
+  <h1>Board game club</h1>
+  <h2>{{ game['name'] }}</h2>
+</header>
+<main>
+  <figure>
+    <img src="{{ game['image'] }}" alt="{{ game['name'] }}" width=50%>
+    <figcaption>Image and game info by <a href="{{ game['link'] }}">BoardGameGeek</a></figcaption>
+  </figure>
+  <h1>{{ game['name'] }} ({{ game['year'] }})</h1>
+  <div>{{ game['rating'] }}</div>
+  {% for i in range(10) %}
+  <span class="fa fa-star checked"></span>
+  {% endfor %}
+  <p>Owned by: {{ game['owned'] }}</p>
+  <ul>
+    <li>Players: {{ game['players_min'] }} - {{ game['players_max'] }}</li>
+    <li>
+      {% if game['time_min'] == game['time_max'] %}
+        Playing time: {{ game['time_min'] }}min
+      {% else %}
+        Playing time: {{ game['time_min'] }} - {{ game['time_max'] }}min
+      {% endif %}
+    </li>
+    <li>Age: {{ game['age'] }}+</li>
+    <li>Complexity: {{ game['weight'] }}/5</li>
+    <li>Category: {{ game['category'][0] }}</li>
+    <li>Mechanic: {{ game['mechanic'][0] }}</li>
+  </ul>
+  <a href="">Edit</a>
+  <a href="" onclick="return confirm('Are you sure you want to delete {{ game['name'] }}?');">Delete</a>
+</main>
+{% endblock %}

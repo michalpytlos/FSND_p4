@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<header>
+  <h1>Board game club</h1>
+</header>
+<main>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/c/cf/Chess_table%2C_wicker_chair%2C_chess%2C_kettle%2C_men_Fortepan_74442.jpg" alt="Men playing chess" width=50%>
+  <p>{{ club['about'] }}</p>
+  <h3>Posts</h3>
+  {%  for post in posts %}
+  <div>
+    <div>{{ post['title'] }}</div>
+    <span>{{ post['author'] }}</span>
+    <span>{{ post['date'] }}</span>
+    <div>{{ post['body'] }}</div>
+  </div>
+  <br>
+  {% endfor %}
+
+  <h3>Members</h3>
+  <ol>
+    {% for member in members %}
+    <li>{{ member['name'] }}</li>
+    {% endfor %}
+  </ol>
+  <h3>Club's games</h3>
+  <table>
+    <tr>
+      <th>Game</th>
+      <th>Players</th>
+      <th>Playing time</th>
+      <th>Complexity</th>
+      <th>Category</th>
+      <th>Rating</th>
+    </tr>
+    {% for game in games %}
+    <tr>
+      <td>{{ game['name'] }}</td>
+      <td>{{ game['players_min'] }}</td>
+      <td>{{ game['time_min'] }} min</td>
+      <td>{{ game['weight'] }}</td>
+      <td>{{ game['category'][0] }}</td>
+      <td>{{ game['rating'] }}</td>
+      <td><a href="">Delete</a><td>
+    </tr>
+    {% endfor %}
+  </table>
+  <form method="post">
+    <input type=text name="game-name" value="">
+    <input type="submit" value="Add game">
+  </form >
+</main>
+{% endblock %}

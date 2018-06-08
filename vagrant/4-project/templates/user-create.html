@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+
+<header>
+  <h1>Board game club</h1>
+  <h2>User profile for {{ user['email'] }}</h2>
+</header>
+<form method="post">
+  <label for="username">Name:</label>
+  <input type="text" id="username" name="username" value="{{ user['name'] }}"><br>
+  <img src="{{ user['image'] }}" alt="{{ user['name'] }}" width=25%><br>
+  <label for="profile-picture">Upload different profile picture (must be .jpg):</label></label>
+  <input type="file" name="pic" accept=".jpg"><br><br>
+  <textarea placeholder="Describe yourself here..." rows="4" cols="50"></textarea><br>
+  <input type="submit" value="Create profile">
+</form>
+<main>
+<a href="">Cancel</a>
+</main>
+{% endblock %}

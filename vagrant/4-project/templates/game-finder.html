@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+
+<header>
+  <h1>Board game club</h1>
+  <h2>Game finder</h2>
+</header>
+<main>
+  <table>
+    <form method="get">
+    <tr>
+      <th rowspan="2">Name</th>
+      <th rowspan="2">Category</th>
+      <th rowspan="2">Minimum Rating</th>
+      <th colspan="2">Players</th>
+      <th colspan="2">Playing time</th>
+      <th colspan="2">Complexity</th>
+    </tr>
+    <tr>
+      <th>min</th>
+      <th>max</th>
+      <th>min</th>
+      <th>max</th>
+      <th>min</th>
+      <th>max</th>
+    </tr>
+    <tr>
+      <td><input type=text name="game-name" value="any"></td>
+      <td>
+        <select name="game-category">
+          <option value="any">Any</option>
+          <option value="card">Card</option>
+          <option value="dice">Dice</option>
+        </select>
+      </td>
+      <td><input type=text name="game-rating-min" value="any"></td>
+      <td><input type=text name="game-players-min" value="any"></td>
+      <td><input type=text name="game-players-max" value="any"></td>
+      <td><input type=text name="game-time-min" value="any"></td>
+      <td><input type=text name="game-time-max" value="any"></td>
+      <td><input type=text name="game-weight-min" value="any"></td>
+      <td><input type=text name="game-weight-max" value="any"></td>
+      <td><input type="submit" value="Search"></td>
+    </tr>
+    </form>
+    {% for game in games %}
+    <tr>
+      <td>{{ game['name'] }}</td>
+      <td>{{ game['category'][0] }}</td>
+      <td>{{ game['rating'] }}</td>
+      <td>{{ game['players_min'] }}</td>
+      <td>{{ game['players_max'] }}</td>
+      <td>{{ game['time_min'] }}</td>
+      <td>{{ game['time_max'] }}</td>
+      <td colspan="2">{{ game['weight'] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+
+
+</main>
+{% endblock %}
