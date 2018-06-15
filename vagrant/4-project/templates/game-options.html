@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+
+<header>
+  <h1>Board game club</h1>
+  <h2>Which game do you want to add to your profile?</h2>
+</header>
+<form method="post">
+  {% for game in games %}
+  <input type="radio" name="bgg-id" value="{{ game['id'] }}" checked>{{ game['name'] }} ({{ game['year'] }})<br>
+  {% endfor %}
+  <input type="submit" value="Add game">
+</form>
+<main>
+<a href="">Cancel</a>
+</main>
+{% endblock %}

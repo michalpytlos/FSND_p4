@@ -34,8 +34,8 @@
     </tr>
     {% endfor %}
   </table>
-  <form method="post">
-    <input type=text name="game-name" value="">
+  <form action="{{url_for('new_game')}}" method="get">
+    <input type=text name="name" value="">
     <input type="submit" value="Add game">
   </form >
 </main>

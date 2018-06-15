@@ -7,57 +7,74 @@
 </header>
 <main>
   <table>
-    <form method="get">
+    <form name="game-finder-form" onsubmit="return validateForm()" method="get">
     <tr>
       <th rowspan="2">Name</th>
       <th rowspan="2">Category</th>
       <th rowspan="2">Minimum Rating</th>
-      <th colspan="2">Players</th>
+      <th colspan="2">Players*</th>
       <th colspan="2">Playing time</th>
       <th colspan="2">Complexity</th>
     </tr>
     <tr>
-      <th>min</th>
-      <th>max</th>
-      <th>min</th>
-      <th>max</th>
+      <th>from</th>
+      <th>to</th>
+      <th>from</th>
+      <th>to</th>
       <th>min</th>
       <th>max</th>
     </tr>
     <tr>
-      <td><input type=text name="game-name" value="any"></td>
+      <td><input type=text name="name"></td>
       <td>
-        <select name="game-category">
+        <select name="category">
           <option value="any">Any</option>
           <option value="card">Card</option>
           <option value="dice">Dice</option>
         </select>
       </td>
-      <td><input type=text name="game-rating-min" value="any"></td>
-      <td><input type=text name="game-players-min" value="any"></td>
-      <td><input type=text name="game-players-max" value="any"></td>
-      <td><input type=text name="game-time-min" value="any"></td>
-      <td><input type=text name="game-time-max" value="any"></td>
-      <td><input type=text name="game-weight-min" value="any"></td>
-      <td><input type=text name="game-weight-max" value="any"></td>
+      <td><input type="number" step="1" min="1" max="10" name="rating-min"></td>
+      <td><input type="number" step="1" min="1" name="players-from"></td>
+      <td><input type="number" step="1" min="1" name="players-to"></td>
+      <td><input type="number" step="1" min="1" name="time-from"></td>
+      <td><input type="number" step="1" min="1" name="time-to"></td>
+      <td>
+        <select name="weight-min">
+          <option value="1">Light (1)</option>
+          <option value="2">Medium Light (2)</option>
+          <option value="3">Medium (3)</option>
+          <option value="4">Medium Heavy (4)</option>
+          <option value="5">Heavy (5)</option>
+        </select>
+      </td>
+      <td>
+        <select name="weight-max">
+          <option value="1">Light (1)</option>
+          <option value="2">Medium Light (2)</option>
+          <option value="3">Medium (3)</option>
+          <option value="4">Medium Heavy (4)</option>
+          <option value="5" selected="selected">Heavy (5)</option>
+        </select>
+      </td>
       <td><input type="submit" value="Search"></td>
     </tr>
     </form>
     {% for game in games %}
     <tr>
-      <td>{{ game['name'] }}</td>
-      <td>{{ game['category'][0] }}</td>
-      <td>{{ game['rating'] }}</td>
-      <td>{{ game['players_min'] }}</td>
-      <td>{{ game['players_max'] }}</td>
-      <td>{{ game['time_min'] }}</td>
-      <td>{{ game['time_max'] }}</td>
-      <td colspan="2">{{ game['weight'] }}</td>
+      <td>{{ game.name }}</td>
+      <td>{{ game.category_1 }}</td>
+      <td>{{ game.bgg_rating }}</td>
+      <td>{{ game.min_players }}</td>
+      <td>{{ game.max_players }}</td>
+      <td>{{ game.min_playtime }}</td>
+      <td>{{ game.max_playtime }}</td>
+      <td colspan="2">{{ game.weight }}</td>
     </tr>
     {% endfor %}
   </table>
-
-
-
+  <p>
+    *Only games playable for all the specified numbers of players will appear
+     in the results
+  </p>
 </main>
 {% endblock %}
