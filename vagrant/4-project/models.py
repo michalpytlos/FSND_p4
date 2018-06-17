@@ -18,9 +18,9 @@ class Game(Base):
     name = Column(String(80), nullable=False)
     year_published = Column(Integer, nullable=False)
     image = Column(String(80), nullable=False)
-    category_1 = Column(String(80))
-    category_2 = Column(String(80))
-    category_3 = Column(String(80))
+    category_1 = Column(Integer, ForeignKey('game_categories.id'))
+    category_2 = Column(Integer, ForeignKey('game_categories.id'))
+    category_3 = Column(Integer, ForeignKey('game_categories.id'))
     min_age = Column(Integer)
     weight = Column(Numeric(4, 3))
     min_playtime = Column(Integer)
@@ -31,6 +31,12 @@ class Game(Base):
     bgg_rating = Column(Numeric(4, 3))
     bgg_id = Column(Integer)
     bgg_link = Column(String(80))
+
+
+class GameCategory(Base):
+    __tablename__ = 'game_categories'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(80), nullable=False)
 
 
 class UserGame(Base):

@@ -1,6 +1,6 @@
 from flask import Flask, render_template, url_for, request, redirect
 from database import db_session
-from models import Club, ClubGame, Game, Post,  User, UserGame
+from models import Club, ClubGame, Game, Post,  User, UserGame, GameCategory
 import requests
 from xml.etree import ElementTree
 import sqlalchemy
@@ -58,7 +58,8 @@ def bgg_game_info(bgg_id):
             categories.append(link.get('value'))
     for i in range(3):
         try:
-            category = categories[i]
+            category_name = categories[i]
+            category = check_game_category(category_name)
         except IndexError:
             category = ''
         game_info['category_{}'.format(i+1)] = category
@@ -73,6 +74,19 @@ def bgg_game_info(bgg_id):
 
     game_info['bgg_link'] = 'https://boardgamegeek.com/boardgame/{}/{}'.format(bgg_id, game_info['name'])
     return game_info
+
+
+def check_game_category(category_name):
+    # Check if a given game category is already in the database.
+    # If not, add to the database
+    # Return the category id
+    category = GameCategory.query.filter_by(name=category_name).scalar()
+    if not category:
+        new_category = GameCategory(name=category_name)
+        db_session.add(new_category)
+        db_session.commit()
+        category = GameCategory.query.filter_by(name=category_name).scalar()
+    return category.id
 
 
 def check_game(bgg_id):
@@ -93,6 +107,47 @@ def check_game(bgg_id):
 
 def get_game(game_id):
     return Game.query.filter_by(id=game_id).scalar()
+
+
+def category_dict(bgames):
+    # return dictionary where each key is a game id and the corresponding value is a list of categories, given by name,
+    # to which this game belongs
+    categories = {}
+    for bgame in bgames:
+        categories[str(bgame.id)] = get_categories(bgame)
+    return categories
+
+
+def get_categories(bgame):
+    # return list of all category names for a given game
+    category_ids = []
+    category_names = []
+    for i in range(1, 4):
+        category = getattr(bgame, 'category_{}'.format(i))
+        if category:
+            category_ids.append(category)
+    for id in category_ids:
+        category = GameCategory.query.filter_by(id=id).scalar()
+        category_names.append(category.name)
+    return category_names
+
+
+def game_search_query_builder(key, value):
+    # return textual sql query for one argument of a game search request
+    # the returned query typically is just a part of a much longer query thus the 'AND' operator in the returned string
+    if len(value) == 0 or value == 'any':
+        return ''
+    d = {'name': "name LIKE '{value}%'",
+         'category': "(category_1='{value}' OR category_2='{value}' OR category_3='{value}')",
+         'rating-min': 'bgg_rating>={value}',
+         'players-from': 'min_players<={value}',
+         'players-to': 'max_players>={value}',
+         'time-from': 'max_playtime>={value}',
+         'time-to': 'min_playtime<={value}',
+         'weight-min': 'weight>={value}',
+         'weight-max': 'weight<={value}',
+         }
+    return d[key].format(value=value) + ' AND '
 
 
 # dummy database objects
@@ -184,7 +239,8 @@ def new_game():
 @app.route('/games/<int:game_id>')
 def game(game_id):
     bgame = get_game(game_id)
-    return render_template('game.html', game=bgame, game_id=game_id)
+    categories = get_categories(bgame)
+    return render_template('game.html', game=bgame, game_id=game_id, categories=categories)
 
 
 @app.route('/games/<int:game_id>/edit')
@@ -208,7 +264,18 @@ def delete_game(game_id):
 
 @app.route('/games/search')
 def game_finder():
-    return render_template('game-finder.html', games=[])
+    all_categories = GameCategory.query.all()
+    games = []
+    categories = {}
+    if len(request.args) > 0:
+        query = ''
+        for key, value in request.args.iteritems():
+            query += game_search_query_builder(key, value)
+        query = query[:-5]
+        print query
+        games = Game.query.filter(sqlalchemy.text(query)).all()
+        categories = category_dict(games)
+    return render_template('game-finder.html', games=games, all_categories=all_categories, categories=categories)
 
 
 if __name__ == '__main__':

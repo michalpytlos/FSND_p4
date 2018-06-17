@@ -29,8 +29,9 @@
       <td>
         <select name="category">
           <option value="any">Any</option>
-          <option value="card">Card</option>
-          <option value="dice">Dice</option>
+          {% for category in all_categories %}
+          <option value={{category.id}}>{{category.name}}</option>
+          {% endfor %}
         </select>
       </td>
       <td><input type="number" step="1" min="1" max="10" name="rating-min"></td>
@@ -62,7 +63,11 @@
     {% for game in games %}
     <tr>
       <td>{{ game.name }}</td>
-      <td>{{ game.category_1 }}</td>
+      <td>
+        {% for category in  categories[game.id|string()] %}
+        {{ category }}
+        {% endfor %}
+      </td>
       <td>{{ game.bgg_rating }}</td>
       <td>{{ game.min_players }}</td>
       <td>{{ game.max_players }}</td>
@@ -76,5 +81,25 @@
     *Only games playable for all the specified numbers of players will appear
      in the results
   </p>
+  <script>
+    function validateForm(){
+      var p_from = document.forms["game-finder-form"]["players-from"].value;
+      var p_to = document.forms["game-finder-form"]["players-to"].value;
+      var t_from = document.forms["game-finder-form"]["time-from"].value;
+      var t_to = document.forms["game-finder-form"]["time-to"].value;
+      if ((p_from && !p_to) || (!p_from && p_to)){
+        alert("'Players to' and 'Players from' fields must either be both blank or both filled");
+        return false;
+      }
+      if (p_from > p_to) {
+        alert("'Players to' must be greater or equal to 'Players from'");
+        return false;
+      }
+      if (t_from > t_to) {
+        alert("'Playing time to' must be greater or equal to 'Playing time from'");
+        return false;
+      }
+    }
+  </script>
 </main>
 {% endblock %}
