@@ -1,17 +1,37 @@
-from flask import Flask, render_template, url_for, request, redirect
+from flask import Flask, render_template, url_for, request, redirect, session, abort
 from database import db_session
 from models import Club, ClubGame, Game, Post,  User, UserGame, GameCategory
 import requests
 from xml.etree import ElementTree
 import sqlalchemy
+from oauth2client import client
+import time
 
 app = Flask(__name__)
+
+CLIENT_SECRET_FILE = 'client_secret.json'
+CLIENT_ID = json.loads(open('client_secret.json', 'r').read())['web']['client_id']
 
 
 # Remove database session at the end of each request
 @app.teardown_appcontext
 def remove_session(exception=None):
     db_session.remove()
+
+
+def validate_id_token(token, token_jwt):
+    # validate id_token as per https://developers.google.com/identity/protocols/OpenIDConnect
+    url = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
+    params = 'id_token={}'.format(token_jwt)
+    r = requests.get(url, params=params)
+
+    if (
+        r.status_code == 200 and r.json()['aud'] == token['aud'] and  # is the token properly signed by the issuer?
+        token['iss'] in ('https://accounts.google.com', 'accounts.google.com') and  # was it issued by google?
+        token['aud'] == CLIENT_ID and  # is it intended for this app?
+        token['exp'] > int(time.time())  # is it still valid (not expired)?
+    ):
+        return True
 
 
 def bgg_game_options(bg_name):
@@ -196,12 +216,65 @@ def home():
 
 @app.route('/signin')
 def sign_in():
-    return 'sign in'
+    if 'username' in session:
+        redirect('/')
+    return render_template('sign-in.html')
 
 
-@app.route('/signout')
-def sign_out():
-    return 'sign out'
+@app.route('/gconnect', methods=['POST'])
+def g_connect():
+    # additional csrf check
+    if not request.headers.get('X-Requested-With'):
+        abort(403)
+    # get one-time code from the end-user
+    auth_code = request.data
+    # exchange one-time code for id_token and access_token
+    try:
+        credentials = client.credentials_from_clientsecrets_and_code(
+            CLIENT_SECRET_FILE,
+            ['https://www.googleapis.com/auth/drive.appdata', 'profile', 'email'],
+            auth_code)
+    except client.FlowExchangeError:
+        print 'Failed to upgrade one-time authorization code.'
+        abort(401)
+    # validate id_token
+    if not validate_id_token(credentials.id_token, credentials.id_token_jwt):
+        print 'id token is not valid'
+        abort(500)
+    # get user info from access token
+    userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
+    params = {'access_token': credentials.access_token, 'alt': 'json'}
+    answer = requests.get(userinfo_url, params=params)
+    user_data = answer.json()
+    # store user info in the session for later use
+    session['email'] = credentials.id_token['email']
+    session['username'] = user_data['name']
+    session['access_token'] = credentials.access_token
+    return user_data['name']
+
+
+@app.route('/gdisconnect')
+def g_disconnect():
+    print session
+    # check if user is connected
+    if 'access_token' not in session:
+        print 'Access token missing'
+        abort(401)
+    # revoke access token
+    r = requests.post('https://accounts.google.com/o/oauth2/revoke',
+                      params={'token': session['access_token']},
+                      headers={'content-type': 'application/x-www-form-urlencoded'})
+    # delete user info from session
+    if r.status_code == 200:
+        del session['email']
+        del session['username']
+        del session['access_token']
+        print session
+        return 'Successfully disconnected'
+    else:
+        print 'Failed to revoke access token'
+        print r.text
+        abort(500)
 
 
 @app.route('/users/new')
@@ -210,7 +283,7 @@ def new_user():
 
 
 @app.route('/users/<int:user_id>')
-def user(user_id):
+def profile(user_id):
     return render_template('user.html', user=user_1, games=[])
 
 
@@ -279,5 +352,6 @@ def game_finder():
 
 
 if __name__ == '__main__':
+    app.secret_key = '\xa7B\xf8w\x13\xcb\x12\x07\xd5\x95_C\x91\xd5\x8c\xf6\\\xb3\xb7\x16\x0b\xab+\x94'
     app.debug = True
     app.run(host='0.0.0.0', port=5000)
