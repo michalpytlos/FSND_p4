@@ -46,13 +46,17 @@
           type: 'POST',
           url: 'http://localhost:5000/gconnect',
           contentType: 'application/octet-stream; charset=utf-8',
-          success: function(result) {
-            $('#login-msg').html('Login successful! <br> Hello ' + result + '<br> Redirecting...')
-            setTimeout(function(){window.location.href='/';}, 4000);
+          success: function(info) {
+            $('#login-msg').html('Login successful! <br> Hello ' + info.username + '<br> Redirecting...');
+            if (info.new_user) {
+              setTimeout(function(){window.location.href='/users/{}/new'.replace('{}', info.user_id);}, 4000);
+            } else {
+              setTimeout(function(){window.location.href='/users/{}'.replace('{}', info.user_id);}, 4000);
+            }
           },
           error: function(jqXHR, textStatus, errorThrown){
-
-              console.log($.parseJSON(jqXHR.responseText)['error-msg']);
+            $('#login-msg').html('Unsuccessful sign-in');
+            console.log($.parseJSON(jqXHR.responseText)['error-msg']);
           },
           processData: false,
           data: authResult['code']

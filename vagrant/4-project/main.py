@@ -1,10 +1,11 @@
-from flask import Flask, render_template, url_for, request, redirect, session, abort
+from flask import Flask, render_template, url_for, request, redirect, session, abort, make_response
 from database import db_session
 from models import Club, ClubGame, Game, Post,  User, UserGame, GameCategory
 import requests
 from xml.etree import ElementTree
 import sqlalchemy
 from oauth2client import client
+import json
 import time
 
 app = Flask(__name__)
@@ -32,6 +33,20 @@ def validate_id_token(token, token_jwt):
         token['exp'] > int(time.time())  # is it still valid (not expired)?
     ):
         return True
+
+
+def json_response(body, code):
+    # build a json response
+    j_response = make_response(json.dumps(body), code)
+    j_response.headers['Content-Type'] = 'application/json'
+    return j_response
+
+
+def error_response(err_msg, code):
+    # build an error json response
+    err_response = make_response(json.dumps({"error-msg": err_msg}), code)
+    err_response.headers['Content-Type'] = 'application/json'
+    return err_response
 
 
 def bgg_game_options(bg_name):
@@ -96,6 +111,23 @@ def bgg_game_info(bgg_id):
     return game_info
 
 
+def check_user(email, name, picture):
+    # Check if the user is already in the database. If not, make a new entry.
+    # return user's id
+    user = User.query.filter_by(email=email).scalar()
+    new_user = False
+    if not user:
+        print 'adding new user to the db'
+        user = User(email=email, name=name, picture=picture)
+        db_session.add(user)
+        db_session.commit()
+        user = User.query.filter_by(email=email).scalar()
+        new_user = True
+    else:
+        print 'user already exists'
+    return user.id, new_user
+
+
 def check_game_category(category_name):
     # Check if a given game category is already in the database.
     # If not, add to the database
@@ -127,6 +159,10 @@ def check_game(bgg_id):
 
 def get_game(game_id):
     return Game.query.filter_by(id=game_id).scalar()
+
+
+def get_user(user_id):
+    return User.query.filter_by(id=user_id).scalar()
 
 
 def category_dict(bgames):
@@ -171,19 +207,6 @@ def game_search_query_builder(key, value):
 
 
 # dummy database objects
-user_1 = {
-    'name': 'John Smith',
-    'email': '12345@gmail.com',
-    'games': {'Dominion': 8, 'Stone Age': 7},  # value is user rating
-    'image': 'https://upload.wikimedia.org/wikipedia/commons/2/25/Benjamin_Franklin_by_Joseph_Duplessis_1778.jpg',
-    'about': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut '
-             'labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris '
-             'nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit '
-             'esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in '
-             'culpa qui officia deserunt mollit anim id est laborum.'
-
-}
-
 game_club = {
     'members': ['user_1'],
     'games': ['Dominion', 'Stone Age'],
@@ -235,12 +258,10 @@ def g_connect():
             ['https://www.googleapis.com/auth/drive.appdata', 'profile', 'email'],
             auth_code)
     except client.FlowExchangeError:
-        print 'Failed to upgrade one-time authorization code.'
-        abort(401)
+        return error_response('Failed to upgrade one-time authorization code.', 401)
     # validate id_token
     if not validate_id_token(credentials.id_token, credentials.id_token_jwt):
-        print 'id token is not valid'
-        abort(500)
+        return error_response('id token is not valid', 500)
     # get user info from access token
     userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
     params = {'access_token': credentials.access_token, 'alt': 'json'}
@@ -250,7 +271,10 @@ def g_connect():
     session['email'] = credentials.id_token['email']
     session['username'] = user_data['name']
     session['access_token'] = credentials.access_token
-    return user_data['name']
+    # If the user does not exist, add him to the database
+    session['user_id'], new_user = check_user(session['email'], session['username'],  user_data['picture'])
+    body = {'username': user_data['name'], 'user_id': session['user_id'], 'new_user': new_user}
+    return json_response(body, 200)
 
 
 @app.route('/gdisconnect')
@@ -258,8 +282,7 @@ def g_disconnect():
     print session
     # check if user is connected
     if 'access_token' not in session:
-        print 'Access token missing'
-        abort(401)
+        return error_response('Access token missing', 401)
     # revoke access token
     r = requests.post('https://accounts.google.com/o/oauth2/revoke',
                       params={'token': session['access_token']},
@@ -270,31 +293,44 @@ def g_disconnect():
         del session['username']
         del session['access_token']
         print session
-        return 'Successfully disconnected'
+        return json_response({'msg': 'Successfully disconnected'}, 200)
     else:
-        print 'Failed to revoke access token'
         print r.text
-        abort(500)
+        return error_response('Failed to revoke access token', 500)
 
 
-@app.route('/users/new')
-def new_user():
-    return render_template('user-create.html', user=user_1)
+@app.route('/users/<int:user_id>/new')
+def new_profile(user_id):
+    user = get_user(user_id)
+    return render_template('profile-new.html', user=user)
 
 
 @app.route('/users/<int:user_id>')
 def profile(user_id):
-    return render_template('user.html', user=user_1, games=[])
+    user = get_user(user_id)
+    return render_template('profile.html', user=user, games=[])
 
 
-@app.route('/users/<int:user_id>/edit')
-def edit_user(user_id):
-    return 'edit user profile'
+@app.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
+def edit_profile(user_id):
+    user = get_user(user_id)
+    if request.method == 'GET':
+        return render_template('profile-edit.html', user=user)
+    else:
+        user.name = request.form['username']
+        user.picture = request.form['picture']
+        user.about = request.form['about']
+        db_session.add(user)
+        db_session.commit()
+        return redirect(url_for('profile', user_id=user_id))
 
 
 @app.route('/users/<int:user_id>/delete')
-def delete_user(user_id):
-    return 'delete user profile'
+def delete_profile(user_id):
+    user = get_user(user_id)
+    db_session.delete(user)
+    db_session.commit()
+    return redirect(url_for('g_disconnect'))
 
 
 @app.route('/games/new', methods=['GET', 'POST'])

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+
+<header>
+  <h1>Board game club</h1>
+  <h2>User profile for {{ user.email }}</h2>
+</header>
+<main>
+<form method="post" action="{{ url_for('edit_profile', user_id=user.id) }}">
+  <label for="username">Name:</label>
+  <input type="text" id="username" name="username" value="{{ user.name }}"><br>
+  <img src="{{ user.picture }}" alt="Profile picture" width=25%><br>
+  <label for="profile-picture">URL of the profile picture</label>
+  <input type="text" name="picture" value="{{ user.picture }}"><br><br>
+  <textarea name="about" placeholder="Describe yourself here..." rows="4" cols="50"></textarea><br>
+  <input type="submit" value="Create profile">
+</form>
+<a href="{{ url_for('delete_profile', user_id=user.id) }}">Cancel</a>
+</main>
+{% endblock %}
