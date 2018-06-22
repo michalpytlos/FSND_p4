@@ -165,6 +165,10 @@ def get_user(user_id):
     return User.query.filter_by(id=user_id).scalar()
 
 
+def get_user_games(user_id):
+    return UserGame.query.filter_by(user_id=user_id).all()
+
+
 def category_dict(bgames):
     # return dictionary where each key is a game id and the corresponding value is a list of categories, given by name,
     # to which this game belongs
@@ -206,6 +210,12 @@ def game_search_query_builder(key, value):
     return d[key].format(value=value) + ' AND '
 
 
+def multi_replace(my_string, repl_dict):
+    for key, value in repl_dict.iteritems():
+        my_string = my_string.replace(key, value)
+    return my_string
+
+
 # dummy database objects
 game_club = {
     'members': ['user_1'],
@@ -234,7 +244,7 @@ post_2 = {
 
 @app.route('/')
 def home():
-    return render_template('club.html', club=game_club, posts=[post_1, post_2], members=[user_1], games=[])
+    return render_template('club.html', club=game_club, posts=[post_1, post_2], members=[], games=[])
 
 
 @app.route('/signin')
@@ -308,7 +318,15 @@ def new_profile(user_id):
 @app.route('/users/<int:user_id>')
 def profile(user_id):
     user = get_user(user_id)
-    return render_template('profile.html', user=user, games=[])
+    user_games = get_user_games(user_id)
+    games_id = []
+    for user_game in user_games:
+        games_id.append(user_game.game_id)
+    query = 'id in {}'.format(games_id)
+    query = multi_replace(query, {'[': '(', ']': ')'})
+    games = Game.query.filter(sqlalchemy.text(query)).all()
+    categories = category_dict(games)
+    return render_template('profile.html', user=user, games=games, categories=categories)
 
 
 @app.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -333,8 +351,8 @@ def delete_profile(user_id):
     return redirect(url_for('g_disconnect'))
 
 
-@app.route('/games/new', methods=['GET', 'POST'])
-def new_game():
+@app.route('/users/<int:user_id>/games/add', methods=['GET', 'POST'])
+def profile_game_add(user_id):
     if request.method == 'GET':
         # Show the game options matching the specified name
         bgg_options = bgg_game_options(request.args.get('name'))
@@ -342,7 +360,24 @@ def new_game():
     else:
         # Add the chosen game to the database
         game_id = check_game(request.form['bgg-id'])
-        return redirect(url_for('game', game_id=game_id))
+        user_game = UserGame(user_id=user_id, game_id=game_id)
+        db_session.add(user_game)
+        db_session.commit()
+        return redirect(url_for('profile', user_id=user_id))
+
+
+@app.route('/users/<int:user_id>/games/<int:game_id>/delete')
+def profile_game_delete(user_id, game_id):
+    user_game = UserGame.query.filter_by(user_id=user_id, game_id=game_id).first()
+    db_session.delete(user_game)
+    db_session.commit()
+    user_game = UserGame.query.filter_by(game_id=game_id).first()
+    if not user_game:
+        # If the game is not owned by any user, remove it from the database
+        bgame = get_game(game_id)
+        db_session.delete(bgame)
+        db_session.commit()
+    return redirect(url_for('profile', user_id=user_id))
 
 
 @app.route('/games/<int:game_id>')
@@ -361,14 +396,6 @@ def edit_game(game_id):
         setattr(bgame, key, value)
     db_session.commit()
     return redirect(url_for('game', game_id=game_id))
-
-
-@app.route('/games/<int:game_id>/delete')
-def delete_game(game_id):
-    bgame = get_game(game_id)
-    db_session.delete(bgame)
-    db_session.commit()
-    return redirect(url_for('home'))
 
 
 @app.route('/games/search')

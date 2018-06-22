@@ -19,22 +19,32 @@
       <th>Complexity</th>
       <th>Category</th>
       <th>User Rating</th>
-      <th>Community Rating</th>
+      <th>BGG Rating</th>
     </tr>
     {% for game in games %}
     <tr>
-      <td>{{ game['name'] }}</td>
-      <td>{{ game['players_min'] }}</td>
-      <td>{{ game['time_min'] }} min</td>
-      <td>{{ game['weight'] }}</td>
-      <td>{{ game['category'][0] }}</td>
-      <td>{{ user['games'][game['name']] }}</td>
-      <td>{{ game['rating'] }}</td>
-      <td><a href="">Delete</a><td>
+      <td><a href="{{ url_for('game', game_id=game.id) }}">{{ game.name }}</a></td>
+      <td>{{ game.min_players }}-{{ game.max_players }}</td>
+      <td>
+        {% if game.min_playtime == game.max_playtime %}
+          {{ game.min_playtime }}min
+        {% else %}
+          {{ game.min_playtime }} - {{ game.max_playtime }}min
+        {% endif %}
+      </td>
+      <td>{{ game.weight }}</td>
+      <td>
+        {% for category in  categories[game.id|string()] %}
+          {{ category }}
+        {% endfor %}
+      </td>
+      <td></td>
+      <td>{{ game.bgg_rating }}</td>
+      <td><a href="{{ url_for('profile_game_delete', user_id=user.id, game_id=game.id) }}">Delete</a><td>
     </tr>
     {% endfor %}
   </table>
-  <form action="{{url_for('new_game')}}" method="get">
+  <form action="{{ url_for('profile_game_add', user_id=user.id) }}" method="get">
     <input type=text name="name" value="">
     <input type="submit" value="Add game">
   </form >
