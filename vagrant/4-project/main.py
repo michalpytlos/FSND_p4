@@ -216,6 +216,16 @@ def multi_replace(my_string, repl_dict):
     return my_string
 
 
+def clear_games(*games_id):
+    # If the game is not owned by any user, remove it from the database
+    for game_id in games_id:
+        user_game = UserGame.query.filter_by(game_id=game_id).first()
+        if not user_game:
+            bgame = get_game(game_id)
+            db_session.delete(bgame)
+    db_session.commit()
+
+
 # dummy database objects
 game_club = {
     'members': ['user_1'],
@@ -347,7 +357,14 @@ def edit_profile(user_id):
 def delete_profile(user_id):
     user = get_user(user_id)
     db_session.delete(user)
+    # delete all user_games for this user
+    user_games = UserGame.query.filter_by(user_id=user_id).all()
+    games_id = []
+    for user_game in user_games:
+        db_session.delete(user_game)
+        games_id.append(user_game.game_id)
     db_session.commit()
+    clear_games(*games_id)
     return redirect(url_for('g_disconnect'))
 
 
@@ -371,12 +388,7 @@ def profile_game_delete(user_id, game_id):
     user_game = UserGame.query.filter_by(user_id=user_id, game_id=game_id).first()
     db_session.delete(user_game)
     db_session.commit()
-    user_game = UserGame.query.filter_by(game_id=game_id).first()
-    if not user_game:
-        # If the game is not owned by any user, remove it from the database
-        bgame = get_game(game_id)
-        db_session.delete(bgame)
-        db_session.commit()
+    clear_games(game_id)
     return redirect(url_for('profile', user_id=user_id))
 
 
