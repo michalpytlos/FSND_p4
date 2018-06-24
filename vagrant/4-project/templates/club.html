@@ -4,8 +4,9 @@
   <h1>Board game club</h1>
 </header>
 <main>
-  <img src="https://upload.wikimedia.org/wikipedia/commons/c/cf/Chess_table%2C_wicker_chair%2C_chess%2C_kettle%2C_men_Fortepan_74442.jpg" alt="Men playing chess" width=50%>
-  <p>{{ club['about'] }}</p>
+  <img src="{{ club.picture if club.picture != None }}" alt="Profile picture" width=50%>
+  <p>{{ club.about if club.about != None }}</p>
+  <a href="{{ url_for('edit_club') }}">Edit</a>
   <h3>Posts</h3>
   {%  for post in posts %}
   <div>
@@ -18,12 +19,12 @@
   {% endfor %}
 
   <h3>Members</h3>
-  <ol>
+  <ul>
     {% for member in members %}
-    <li>{{ member['name'] }}</li>
+    <li><a href="{{ url_for('profile', user_id=member.id) }}">{{ member.name }}</a></li>
     {% endfor %}
-  </ol>
-  <h3>Club's games</h3>
+  </ul>
+  <p>Club's games</p>
   <table>
     <tr>
       <th>Game</th>
@@ -31,23 +32,36 @@
       <th>Playing time</th>
       <th>Complexity</th>
       <th>Category</th>
-      <th>Rating</th>
+      <th>User Rating</th>
+      <th>BGG Rating</th>
     </tr>
     {% for game in games %}
     <tr>
-      <td>{{ game['name'] }}</td>
-      <td>{{ game['players_min'] }}</td>
-      <td>{{ game['time_min'] }} min</td>
-      <td>{{ game['weight'] }}</td>
-      <td>{{ game['category'][0] }}</td>
-      <td>{{ game['rating'] }}</td>
-      <td><a href="">Delete</a><td>
+      <td><a href="{{ url_for('game', game_id=game.id) }}">{{ game.name }}</a></td>
+      <td>{{ game.min_players }}-{{ game.max_players }}</td>
+      <td>
+        {% if game.min_playtime == game.max_playtime %}
+          {{ game.min_playtime }}min
+        {% else %}
+          {{ game.min_playtime }} - {{ game.max_playtime }}min
+        {% endif %}
+      </td>
+      <td>{{ game.weight }}</td>
+      <td>
+        {% for category in  categories[game.id|string()] %}
+          {{ category }}
+        {% endfor %}
+      </td>
+      <td></td>
+      <td>{{ game.bgg_rating }}</td>
+      <td><a href="{{ url_for('club_game_delete', game_id=game.id) }}">Delete</a><td>
     </tr>
     {% endfor %}
   </table>
-  <form method="post">
-    <input type=text name="game-name" value="">
+  <form action="{{ url_for('club_game_add') }}" method="get">
+    <input type=text name="name" value="">
     <input type="submit" value="Add game">
   </form >
+
 </main>
 {% endblock %}

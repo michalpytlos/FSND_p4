@@ -56,7 +56,6 @@ class ClubGame(Base):
 class Club(Base):
     __tablename__ = 'clubs'
     id = Column(Integer, primary_key=True)
-    email = Column(String(80), nullable=False)
     name = Column(String(80), nullable=False)
     about = Column(String(1000))
     picture = Column(String(80))

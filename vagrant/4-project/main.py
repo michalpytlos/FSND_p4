@@ -217,25 +217,21 @@ def multi_replace(my_string, repl_dict):
 
 
 def clear_games(*games_id):
-    # If the game is not owned by any user, remove it from the database
+    # If the game is not owned by any user or the club, remove it from the database
     for game_id in games_id:
         user_game = UserGame.query.filter_by(game_id=game_id).first()
-        if not user_game:
+        club_game = ClubGame.query.filter_by(game_id=game_id).first()
+        if not user_game and not club_game:
             bgame = get_game(game_id)
             db_session.delete(bgame)
     db_session.commit()
 
 
-# dummy database objects
-game_club = {
-    'members': ['user_1'],
-    'games': ['Dominion', 'Stone Age'],
-    'about': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut '
-             'labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris '
-             'nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit '
-             'esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in '
-             'culpa qui officia deserunt mollit anim id est laborum.'
-}
+def init_club_info():
+    club = Club(name='Board Game Club')
+    db_session.add(club)
+    db_session.commit()
+
 
 post_1 = {
     'title': 'Hello',
@@ -254,7 +250,54 @@ post_2 = {
 
 @app.route('/')
 def home():
-    return render_template('club.html', club=game_club, posts=[post_1, post_2], members=[], games=[])
+    club = Club.query.filter_by(id=1).scalar()
+    members = User.query.all()
+    club_games = ClubGame.query.all()
+    games_id = []
+    for club_game in club_games:
+        games_id.append(club_game.game_id)
+    query = 'id in {}'.format(games_id)
+    query = multi_replace(query, {'[': '(', ']': ')'})
+    games = Game.query.filter(sqlalchemy.text(query)).all()
+    categories = category_dict(games)
+    return render_template('club.html', club=club, posts=[post_1, post_2], members=members, games=games, categories=categories)
+
+
+@app.route('/club/edit', methods=['GET', 'POST'])
+def edit_club():
+    club = Club.query.filter_by(id=1).scalar()
+    if request.method == 'GET':
+        return render_template('club-edit.html', club=club)
+    else:
+        club.about = request.form['about']
+        club.picture = request.form['picture']
+        db_session.add(club)
+        db_session.commit()
+        return redirect(url_for('home'))
+
+
+@app.route('/club/games/add', methods=['GET', 'POST'])
+def club_game_add():
+    if request.method == 'GET':
+        # Show the game options matching the specified name
+        bgg_options = bgg_game_options(request.args.get('name'))
+        return render_template('game-options.html', games=bgg_options)
+    else:
+        # Add the chosen game to the database
+        game_id = check_game(request.form['bgg-id'])
+        club_game = ClubGame(game_id=game_id)
+        db_session.add(club_game)
+        db_session.commit()
+        return redirect(url_for('home'))
+
+
+@app.route('/club/games/<int:game_id>/delete')
+def club_game_delete(game_id):
+    club_game = ClubGame.query.filter_by(game_id=game_id).first()
+    db_session.delete(club_game)
+    db_session.commit()
+    clear_games(game_id)
+    return redirect(url_for('home'))
 
 
 @app.route('/signin')

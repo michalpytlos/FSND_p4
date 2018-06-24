@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<main>
+  <form method="post">
+    <img src="{{ club.picture if club.picture != None }}" alt="Profile picture" width=50%><br>
+    <label for="profile-picture">URL of the club's profile picture</label>
+    <input type="text" name="picture" value="{{ club.picture if club.picture != None }}"><br><br>
+    <textarea name="about" placeholder="Few words about the club..." rows="4" cols="50">{{ club.about if club.about != None }}</textarea><br>
+    <input type="submit" value="Submit changes">
+  </form>
+  <a href="{{ url_for('home') }}">Cancel</a>
+</main>
+
+{% endblock %}
