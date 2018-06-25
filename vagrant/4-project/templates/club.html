@@ -8,12 +8,20 @@
   <p>{{ club.about if club.about != None }}</p>
   <a href="{{ url_for('edit_club') }}">Edit</a>
   <h3>Posts</h3>
+  <a href="{{ url_for('post_add') }}">Add new post</a>
   {%  for post in posts %}
   <div>
-    <div>{{ post['title'] }}</div>
+    <div>{{ post['subject'] }}</div>
     <span>{{ post['author'] }}</span>
-    <span>{{ post['date'] }}</span>
+    <span>Posted {{ post['posted'] }} (UTC)</span>
+    <div>
+      {% if post['edited'] %}
+        Edited {{ post['edited']}}
+      {% endif %}
+    </div>
     <div>{{ post['body'] }}</div>
+    <a href="{{ url_for('post_edit', post_id=post['id']) }}">Edit</a>
+    <a href="{{ url_for('post_delete', post_id=post['id']) }}">Delete</a>
   </div>
   <br>
   {% endfor %}

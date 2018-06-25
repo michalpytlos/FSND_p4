@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+
+<header>
+  <h1>Board game club</h1>
+  <h2>New post</h2>
+</header>
+<main>
+<form method="post">
+  <label for="subject">Subject</label><br>
+  <input type="text" id="subject" name="subject"><br>
+  <label for="body">Post</label><br>
+  <textarea name="body" rows="4" cols="50"></textarea><br>
+  <input type="submit" value="Submit">
+</form>
+<a href="{{ url_for('home') }}">Cancel</a>
+</main>
+{% endblock %}

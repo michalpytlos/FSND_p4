@@ -178,6 +178,23 @@ def category_dict(bgames):
     return categories
 
 
+def make_posts_read(posts):
+    posts_read = []
+    for post in posts:
+        user = User.query.filter_by(id=post.user_id).scalar()
+        post_dict = {
+            'id': post.id,
+            'subject': post.subject,
+            'body': post.body,
+            'author': user.name,
+            'posted': time.strftime("%d/%m/%Y, %H:%M", time.gmtime(post.posted)),
+        }
+        if post.edited:
+            post_dict['edited'] = time.strftime("%d/%m/%Y, %H:%M", time.gmtime(post.edited))
+        posts_read.append(post_dict)
+    return posts_read
+
+
 def get_categories(bgame):
     # return list of all category names for a given game
     category_ids = []
@@ -233,21 +250,6 @@ def init_club_info():
     db_session.commit()
 
 
-post_1 = {
-    'title': 'Hello',
-    'author': 'John Smith',
-    'date': '06/06/2018',
-    'body': 'I like board games!'
-}
-
-post_2 = {
-    'title': 'Card games',
-    'author': 'John Smith',
-    'date': '07/06/2018',
-    'body': 'And card games too!'
-}
-
-
 @app.route('/')
 def home():
     club = Club.query.filter_by(id=1).scalar()
@@ -260,7 +262,9 @@ def home():
     query = multi_replace(query, {'[': '(', ']': ')'})
     games = Game.query.filter(sqlalchemy.text(query)).all()
     categories = category_dict(games)
-    return render_template('club.html', club=club, posts=[post_1, post_2], members=members, games=games, categories=categories)
+    posts = Post.query.all()
+    posts_read = make_posts_read(posts)
+    return render_template('club.html', club=club, posts=posts_read, members=members, games=games, categories=categories)
 
 
 @app.route('/club/edit', methods=['GET', 'POST'])
@@ -287,6 +291,43 @@ def club_game_add():
         game_id = check_game(request.form['bgg-id'])
         club_game = ClubGame(game_id=game_id)
         db_session.add(club_game)
+        db_session.commit()
+        return redirect(url_for('home'))
+
+
+@app.route('/posts/add', methods=['GET', 'POST'])
+def post_add():
+    if request.method == 'GET':
+        return render_template('post-new.html')
+    else:
+        post_data = {
+            'user_id': session['user_id'],
+            'subject': request.form['subject'],
+            'body': request.form['body'],
+            'posted': int(time.time())
+        }
+        post = Post(**post_data)
+        db_session.add(post)
+        db_session.commit()
+        return redirect(url_for('home'))
+
+
+@app.route('/posts/<int:post_id>/delete')
+def post_delete(post_id):
+    post = Post.query.filter_by(id=post_id).scalar()
+    db_session.delete(post)
+    db_session.commit()
+    return redirect(url_for('home'))
+
+
+@app.route('/posts/<int:post_id>/edit', methods=['GET', 'POST'])
+def post_edit(post_id):
+    post = Post.query.filter_by(id=post_id).scalar()
+    if request.method == 'GET':
+        return render_template('post-edit.html', post=post)
+    else:
+        post.body = request.form['body']
+        post.edited = int(time.time())
         db_session.commit()
         return redirect(url_for('home'))
 

@@ -67,4 +67,5 @@ class Post(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
     subject = Column(String(80), nullable=False)
     body = Column(String(1000), nullable=False)
-    time = Column(Integer, nullable=False)
+    posted = Column(Integer, nullable=False)
+    edited = Column(Integer)
