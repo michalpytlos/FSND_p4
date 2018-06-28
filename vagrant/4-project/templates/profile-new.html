@@ -15,6 +15,6 @@
   <textarea name="about" placeholder="Describe yourself here..." rows="4" cols="50"></textarea><br>
   <input type="submit" value="Create profile">
 </form>
-<a href="{{ url_for('delete_profile', user_id=user.id) }}">Cancel</a>
+<a href="{{ url_for('profile_', user_id=user.id) }}">Cancel</a>
 </main>
 {% endblock %}

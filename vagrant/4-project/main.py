@@ -56,8 +56,6 @@ def bgg_game_options(bg_name):
     url = 'https://boardgamegeek.com/xmlapi2/search'
     payload = {'query': bg_name, 'type': 'boardgame'}
     r = requests.get(url, params=payload)
-    print r.url
-    print r.content
     # Parse the xml response
     root = ElementTree.fromstring(r.content)
     for item in root.findall('item'):
@@ -179,6 +177,7 @@ def category_dict(bgames):
 
 
 def make_posts_read(posts):
+    # return list of post dictionaries where each dictionary holds data in a format ready to be used in the template
     posts_read = []
     for post in posts:
         user = User.query.filter_by(id=post.user_id).scalar()
@@ -244,10 +243,21 @@ def clear_games(*games_id):
     db_session.commit()
 
 
+def patch_resource(attributes, my_obj):
+    # Patch database resource
+    for attribute in attributes:
+        setattr(my_obj, attribute['name'], attribute['value'])
+    db_session.add(my_obj)
+    db_session.commit()
+
+
 def init_club_info():
     club = Club(name='Board Game Club')
     db_session.add(club)
     db_session.commit()
+
+
+'''*****************************************    HANDLERS BELOW     **************************************************'''
 
 
 @app.route('/')
@@ -267,17 +277,12 @@ def home():
     return render_template('club.html', club=club, posts=posts_read, members=members, games=games, categories=categories)
 
 
-@app.route('/club/edit', methods=['GET', 'POST'])
-def edit_club():
+@app.route('/club', methods=['PATCH'])
+def club_():
     club = Club.query.filter_by(id=1).scalar()
-    if request.method == 'GET':
-        return render_template('club-edit.html', club=club)
-    else:
-        club.about = request.form['about']
-        club.picture = request.form['picture']
-        db_session.add(club)
-        db_session.commit()
-        return redirect(url_for('home'))
+    attributes = request.get_json()['data']['attributes']
+    patch_resource(attributes, club)
+    return '', 204
 
 
 @app.route('/club/games/add', methods=['GET', 'POST'])
@@ -293,6 +298,15 @@ def club_game_add():
         db_session.add(club_game)
         db_session.commit()
         return redirect(url_for('home'))
+
+
+@app.route('/club/games/<int:game_id>', methods=['DELETE'])
+def club_game_(game_id):
+    club_game = ClubGame.query.filter_by(game_id=game_id).first()
+    db_session.delete(club_game)
+    db_session.commit()
+    clear_games(game_id)
+    return '', 204
 
 
 @app.route('/posts/add', methods=['GET', 'POST'])
@@ -312,33 +326,18 @@ def post_add():
         return redirect(url_for('home'))
 
 
-@app.route('/posts/<int:post_id>/delete')
-def post_delete(post_id):
+@app.route('/posts/<int:post_id>', methods=['PATCH', 'DELETE'])
+def post_(post_id):
     post = Post.query.filter_by(id=post_id).scalar()
-    db_session.delete(post)
-    db_session.commit()
-    return redirect(url_for('home'))
-
-
-@app.route('/posts/<int:post_id>/edit', methods=['GET', 'POST'])
-def post_edit(post_id):
-    post = Post.query.filter_by(id=post_id).scalar()
-    if request.method == 'GET':
-        return render_template('post-edit.html', post=post)
+    if request.method == 'PATCH':
+        attributes = request.get_json()['data']['attributes']
+        attributes.append({'name': 'edited', 'value': int(time.time())})
+        patch_resource(attributes, post)
+        return '', 204
     else:
-        post.body = request.form['body']
-        post.edited = int(time.time())
+        db_session.delete(post)
         db_session.commit()
-        return redirect(url_for('home'))
-
-
-@app.route('/club/games/<int:game_id>/delete')
-def club_game_delete(game_id):
-    club_game = ClubGame.query.filter_by(game_id=game_id).first()
-    db_session.delete(club_game)
-    db_session.commit()
-    clear_games(game_id)
-    return redirect(url_for('home'))
+        return '', 204
 
 
 @app.route('/signin')
@@ -404,52 +403,39 @@ def g_disconnect():
 
 
 @app.route('/users/<int:user_id>/new')
-def new_profile(user_id):
+def profile_add(user_id):
     user = get_user(user_id)
     return render_template('profile-new.html', user=user)
 
 
-@app.route('/users/<int:user_id>')
-def profile(user_id):
-    user = get_user(user_id)
-    user_games = get_user_games(user_id)
-    games_id = []
-    for user_game in user_games:
-        games_id.append(user_game.game_id)
-    query = 'id in {}'.format(games_id)
-    query = multi_replace(query, {'[': '(', ']': ')'})
-    games = Game.query.filter(sqlalchemy.text(query)).all()
-    categories = category_dict(games)
-    return render_template('profile.html', user=user, games=games, categories=categories)
-
-
-@app.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
-def edit_profile(user_id):
+@app.route('/users/<int:user_id>', methods=['GET', 'PATCH', 'DELETE'])
+def profile_(user_id):
     user = get_user(user_id)
     if request.method == 'GET':
-        return render_template('profile-edit.html', user=user)
+        user_games = get_user_games(user_id)
+        games_id = []
+        for user_game in user_games:
+            games_id.append(user_game.game_id)
+        query = 'id in {}'.format(games_id)
+        query = multi_replace(query, {'[': '(', ']': ')'})
+        games = Game.query.filter(sqlalchemy.text(query)).all()
+        categories = category_dict(games)
+        return render_template('profile.html', user=user, games=games, categories=categories)
+    elif request.method == 'PATCH':
+        attributes = request.get_json()['data']['attributes']
+        patch_resource(attributes, user)
+        return '', 204
     else:
-        user.name = request.form['username']
-        user.picture = request.form['picture']
-        user.about = request.form['about']
-        db_session.add(user)
+        db_session.delete(user)
+        # delete all user_games for this user
+        user_games = UserGame.query.filter_by(user_id=user_id).all()
+        games_id = []
+        for user_game in user_games:
+            db_session.delete(user_game)
+            games_id.append(user_game.game_id)
         db_session.commit()
-        return redirect(url_for('profile', user_id=user_id))
-
-
-@app.route('/users/<int:user_id>/delete')
-def delete_profile(user_id):
-    user = get_user(user_id)
-    db_session.delete(user)
-    # delete all user_games for this user
-    user_games = UserGame.query.filter_by(user_id=user_id).all()
-    games_id = []
-    for user_game in user_games:
-        db_session.delete(user_game)
-        games_id.append(user_game.game_id)
-    db_session.commit()
-    clear_games(*games_id)
-    return redirect(url_for('g_disconnect'))
+        clear_games(*games_id)
+        return '', 204
 
 
 @app.route('/users/<int:user_id>/games/add', methods=['GET', 'POST'])
@@ -464,34 +450,31 @@ def profile_game_add(user_id):
         user_game = UserGame(user_id=user_id, game_id=game_id)
         db_session.add(user_game)
         db_session.commit()
-        return redirect(url_for('profile', user_id=user_id))
+        return redirect(url_for('profile_', user_id=user_id))
 
 
-@app.route('/users/<int:user_id>/games/<int:game_id>/delete')
-def profile_game_delete(user_id, game_id):
+@app.route('/users/<int:user_id>/games/<int:game_id>', methods=['DELETE'])
+def profile_game_(user_id, game_id):
     user_game = UserGame.query.filter_by(user_id=user_id, game_id=game_id).first()
     db_session.delete(user_game)
     db_session.commit()
     clear_games(game_id)
-    return redirect(url_for('profile', user_id=user_id))
+    return '', 204
 
 
-@app.route('/games/<int:game_id>')
-def game(game_id):
+@app.route('/games/<int:game_id>', methods=['GET', 'POST'])
+def game_(game_id):
     bgame = get_game(game_id)
-    categories = get_categories(bgame)
-    return render_template('game.html', game=bgame, game_id=game_id, categories=categories)
-
-
-@app.route('/games/<int:game_id>/edit')
-def edit_game(game_id):
-    # Update game info from bgg API
-    bgame = get_game(game_id)
-    game_info = bgg_game_info(bgame.bgg_id)
-    for key, value in game_info.iteritems():
-        setattr(bgame, key, value)
-    db_session.commit()
-    return redirect(url_for('game', game_id=game_id))
+    if request.method == 'GET':
+        categories = get_categories(bgame)
+        return render_template('game.html', game=bgame, game_id=game_id, categories=categories)
+    else:
+        # Update game info from bgg API
+        game_info = bgg_game_info(bgame.bgg_id)
+        for key, value in game_info.iteritems():
+            setattr(bgame, key, value)
+        db_session.commit()
+        return redirect(url_for('game_', game_id=game_id))
 
 
 @app.route('/games/search')

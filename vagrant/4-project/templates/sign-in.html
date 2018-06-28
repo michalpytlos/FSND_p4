@@ -49,9 +49,9 @@
           success: function(info) {
             $('#login-msg').html('Login successful! <br> Hello ' + info.username + '<br> Redirecting...');
             if (info.new_user) {
-              setTimeout(function(){window.location.href='/users/{}/new'.replace('{}', info.user_id);}, 4000);
+              setTimeout(function(){window.location.href='/users/{}/new'.replace('{}', info.user_id);}, 2000);
             } else {
-              setTimeout(function(){window.location.href='/users/{}'.replace('{}', info.user_id);}, 4000);
+              setTimeout(function(){window.location.href='/users/{}'.replace('{}', info.user_id);}, 2000);
             }
           },
           error: function(jqXHR, textStatus, errorThrown){
