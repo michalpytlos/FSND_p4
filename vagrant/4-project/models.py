@@ -61,6 +61,12 @@ class Club(Base):
     picture = Column(String(80))
 
 
+class ClubAdmin(Base):
+    __tablename__ = 'club_admins'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+
+
 class Post(Base):
     __tablename__ = 'posts'
     id = Column(Integer, primary_key=True)

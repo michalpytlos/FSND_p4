@@ -21,9 +21,7 @@
     <img src="{{ user.picture if user.picture != None }}" alt="Profile picture" width=25%><br>
     <label for="profile-picture">URL of the profile picture</label>
     <input type="text" name="picture" value="{{ user.picture }}"><br><br>
-    <textarea name="about" placeholder="Describe yourself here..." rows="4" cols="50">
-      {{ user.about if user.about != None }}
-    </textarea><br>
+    <textarea name="about" placeholder="Describe yourself here..." rows="4" cols="50">{{ user.about if user.about != None }}</textarea><br>
     <input type="submit" value="Edit profile">
   </form>
   <button value="Edit" onclick="updateToggle(this)">Edit</button>
@@ -32,7 +30,7 @@
     <input type="hidden" name="url" value="{{ url_for('profile_', user_id=user.id) }}">
     <input type="hidden" name="redirect" value="{{ url_for('g_disconnect') }}">
     <input type="hidden" name="method" value="DELETE">
-    <input type="submit" value="Delete account">
+    <input type="submit" value="Delete profile">
   </form>
   <p>Owned games</p>
   <table>

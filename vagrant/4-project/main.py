@@ -1,6 +1,6 @@
 from flask import Flask, render_template, url_for, request, redirect, session, abort, make_response
 from database import db_session
-from models import Club, ClubGame, Game, Post,  User, UserGame, GameCategory
+from models import Club, ClubGame, Game, Post,  User, UserGame, GameCategory, ClubAdmin
 import requests
 from xml.etree import ElementTree
 import sqlalchemy
@@ -18,6 +18,42 @@ CLIENT_ID = json.loads(open('client_secret.json', 'r').read())['web']['client_id
 @app.teardown_appcontext
 def remove_session(exception=None):
     db_session.remove()
+
+
+@app.before_request
+def ownership_required():
+    # restrict access to the owner of the resource only
+    if request.endpoint in ('profile_game_add', 'club_game_add') or request.method in ('PATCH', 'DELETE'):
+        print 'checking ownership'
+        if 'user_id' not in session or not check_ownership():
+            abort(403)
+        else:
+            print 'ownership ok'
+
+
+def check_ownership():
+    # check if the user is the owner of the requested resource
+    user_id = session['user_id']
+    if 'club_' in request.endpoint:
+        return ClubAdmin.query.filter_by(user_id=user_id).scalar()
+    elif 'profile_' in request.endpoint:
+        return request.view_args['user_id'] == user_id
+    elif request.endpoint == 'post_':
+        return Post.query.filter_by(id=request.view_args['post_id'], user_id=user_id).scalar()
+    else:
+        print 'Unable to verify ownership'
+        return False
+
+
+@app.before_request
+def login_required():
+    # restrict access to logged in users only
+    if (
+        (request.endpoint in ('post_add', 'profile_add', 'g_disconnect') or
+         request.endpoint == 'game_' and request.method == 'POST') and
+        'username' not in session
+    ):
+        return redirect('/signin')
 
 
 def validate_id_token(token, token_jwt):
@@ -257,6 +293,18 @@ def init_club_info():
     db_session.commit()
 
 
+def add_club_admin(email):
+    # Add user to club admins
+    user = User.query.filter_by(email=email).scalar()
+    if user:
+        admin = ClubAdmin(user_id=user.id)
+        db_session.add(admin)
+        db_session.commit()
+        print 'User added to club admins'
+    else:
+        print 'User not found'
+
+
 '''*****************************************    HANDLERS BELOW     **************************************************'''
 
 
@@ -395,6 +443,7 @@ def g_disconnect():
         del session['email']
         del session['username']
         del session['access_token']
+        del session['user_id']
         print session
         return json_response({'msg': 'Successfully disconnected'}, 200)
     else:
@@ -427,6 +476,10 @@ def profile_(user_id):
         return '', 204
     else:
         db_session.delete(user)
+        # delete all posts for this user
+        Post.query.filter_by(user_id=user_id).delete()
+        # remove the user from club admins
+        ClubAdmin.query.filter_by(user_id=user_id).delete()
         # delete all user_games for this user
         user_games = UserGame.query.filter_by(user_id=user_id).all()
         games_id = []
