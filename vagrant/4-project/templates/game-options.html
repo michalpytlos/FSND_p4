@@ -6,6 +6,7 @@
   <h2>Which game do you want to add to your profile?</h2>
 </header>
 <form method="post">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
   {% for game in games %}
   <input type="radio" name="bgg-id" value="{{ game['id'] }}" checked>{{ game['name'] }} ({{ game['year'] }})<br>
   {% endfor %}

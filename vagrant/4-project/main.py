@@ -7,11 +7,45 @@ import sqlalchemy
 from oauth2client import client
 import json
 import time
+import string
+import random
 
 app = Flask(__name__)
 
 CLIENT_SECRET_FILE = 'client_secret.json'
 CLIENT_ID = json.loads(open('client_secret.json', 'r').read())['web']['client_id']
+
+
+@app.before_request
+def csrf_protect():
+    # csrf protection as per:
+    # 'http://flask.pocoo.org/snippets/3/' posted by Dan Jacob on 2010-05-03 @ 11:29 and filed in Security
+    # but with only one token per session
+    if request.method in ('POST', 'PATCH', 'DELETE'):
+        print 'csrf protection: validating request'
+        print 'session: {}'.format(session)
+        token = session.get('_csrf_token')
+        if not token or token not in (request.form.get('_csrf_token'),
+                                      request.get_json().get('_csrf_token') if request.get_json() else None):
+            abort(403)
+        else:
+            print 'csrf protection: request validated'
+
+
+def generate_csrf_token():
+    if '_csrf_token' not in session:
+        print 'generating csrf token'
+        session['_csrf_token'] = random_string()
+    return session['_csrf_token']
+
+
+app.jinja_env.globals['csrf_token'] = generate_csrf_token
+
+
+def random_string():
+    # create random string
+    chars = string.ascii_letters + string.digits
+    return ''.join([chars[random.randint(0, 61)] for i in range(20)])
 
 
 # Remove database session at the end of each request

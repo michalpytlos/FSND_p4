@@ -16,6 +16,7 @@
     <input type="hidden" name="method" value="PATCH">
     <input type="hidden" name="type" value="user">
     <input type="hidden" name="id" value="{{ user.id }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <label for="username">Name:</label>
     <input type="text" id="username" name="name" value="{{ user.name }}"><br>
     <img src="{{ user.picture if user.picture != None }}" alt="Profile picture" width=25%><br>
@@ -30,6 +31,7 @@
     <input type="hidden" name="url" value="{{ url_for('profile_', user_id=user.id) }}">
     <input type="hidden" name="redirect" value="{{ url_for('g_disconnect') }}">
     <input type="hidden" name="method" value="DELETE">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="submit" value="Delete profile">
   </form>
   <p>Owned games</p>
@@ -67,6 +69,7 @@
           <input type="hidden" name="url" value="{{ url_for('profile_game_', user_id=user.id, game_id=game.id) }}">
           <input type="hidden" name="redirect" value="{{ url_for('profile_', user_id=user.id) }}">
           <input type="hidden" name="method" value="DELETE">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
           <input type="submit" value="Delete">
         </form>
       <td>

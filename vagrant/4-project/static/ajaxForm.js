@@ -16,13 +16,17 @@ function ajaxDelete(formD){
 	$.ajax({
 	  method: 'DELETE',
 	  url:  $(formD).children('input[name="url"]').val(),
-	  contentType: false,
+	  contentType: 'application/json',
 	  success: function() {
-		window.location.href=$(formD).children('input[name="redirect"]').val();
+			window.location.href=$(formD).children('input[name="redirect"]').val();
 	  },
 	  error: function(){
-		console.log('Unsuccessful deletion');
+			alert('Unsuccessful deletion');
 	  },
+		processData: false,
+	  data: JSON.stringify({
+			"_csrf_token": $(formD).children('input[name="_csrf_token"]').val()
+		})
 	});
 }
 
@@ -33,10 +37,10 @@ function ajaxPatch(formP){
 	  url:  $(formP).children('input[name="url"]').val(),
 	  contentType: 'application/json',
 	  success: function() {
-		window.location.href=$(formP).children('input[name="redirect"]').val();
+			window.location.href=$(formP).children('input[name="redirect"]').val();
 	  },
 	  error: function(){
-		console.log('Unsuccessful update');
+			alert('Unsuccessful update');
 	  },
 	  processData: false,
 	  data: makePayload(formP)
@@ -47,6 +51,7 @@ function makePayload(formP){
 //Make payload for patch requests
 	var attr = $(formP).children('textarea, input[type="text"]').serializeArray();
 	var payload = {
+		"_csrf_token": $(formP).children('input[name="_csrf_token"]').val(),
 	  "data": {
 		"type": $(formP).children('input[name="type"]').val(),
 		"id": $(formP).children('input[name="id"]').val(),
