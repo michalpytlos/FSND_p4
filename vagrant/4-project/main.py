@@ -67,13 +67,15 @@ def ownership_required():
 
 def check_ownership():
     # check if the user is the owner of the requested resource
-    user_id = session['user_id']
-    if 'club_' in request.endpoint:
-        return ClubAdmin.query.filter_by(user_id=user_id).scalar()
+    user_id = session.get('user_id')
+    if not user_id:
+        return False
+    elif 'club_' in request.endpoint or 'home' in request.endpoint:
+        return True if ClubAdmin.query.filter_by(user_id=user_id).scalar() else False
     elif 'profile_' in request.endpoint:
         return request.view_args['user_id'] == user_id
     elif request.endpoint == 'post_':
-        return Post.query.filter_by(id=request.view_args['post_id'], user_id=user_id).scalar()
+        return True if Post.query.filter_by(id=request.view_args['post_id'], user_id=user_id).scalar() else False
     else:
         print 'Unable to verify ownership'
         return False
@@ -249,6 +251,7 @@ def category_dict(bgames):
 def make_posts_read(posts):
     # return list of post dictionaries where each dictionary holds data in a format ready to be used in the template
     posts_read = []
+    user_id = session.get('user_id')
     for post in posts:
         user = User.query.filter_by(id=post.user_id).scalar()
         post_dict = {
@@ -257,6 +260,7 @@ def make_posts_read(posts):
             'body': post.body,
             'author': user.name,
             'posted': time.strftime("%d/%m/%Y, %H:%M", time.gmtime(post.posted)),
+            'owner': post.user_id == user_id
         }
         if post.edited:
             post_dict['edited'] = time.strftime("%d/%m/%Y, %H:%M", time.gmtime(post.edited))
@@ -356,7 +360,12 @@ def home():
     categories = category_dict(games)
     posts = Post.query.all()
     posts_read = make_posts_read(posts)
-    return render_template('club.html', club=club, posts=posts_read, members=members, games=games, categories=categories)
+    # check if the user is signed in and if he/she is the club admin
+    signed_in = 'username' in session
+    owner = check_ownership()
+    print signed_in, owner
+    return render_template('club.html', club=club, posts=posts_read, members=members, games=games,
+                           categories=categories, signed_in=signed_in, owner=owner)
 
 
 @app.route('/club', methods=['PATCH'])
@@ -435,7 +444,7 @@ def g_connect():
     if not request.headers.get('X-Requested-With'):
         abort(403)
     # get one-time code from the end-user
-    auth_code = request.data
+    auth_code = request.get_json().get('auth_code')
     # exchange one-time code for id_token and access_token
     try:
         credentials = client.credentials_from_clientsecrets_and_code(
@@ -478,6 +487,7 @@ def g_disconnect():
         del session['username']
         del session['access_token']
         del session['user_id']
+        del session['_csrf_token']
         print session
         return json_response({'msg': 'Successfully disconnected'}, 200)
     else:
@@ -503,7 +513,7 @@ def profile_(user_id):
         query = multi_replace(query, {'[': '(', ']': ')'})
         games = Game.query.filter(sqlalchemy.text(query)).all()
         categories = category_dict(games)
-        return render_template('profile.html', user=user, games=games, categories=categories)
+        return render_template('profile.html', user=user, games=games, categories=categories, owner=check_ownership())
     elif request.method == 'PATCH':
         attributes = request.get_json()['data']['attributes']
         patch_resource(attributes, user)

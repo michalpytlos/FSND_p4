@@ -44,8 +44,8 @@
         console.log('Sending one-time code to the server...')
         $.ajax({
           type: 'POST',
-          url: 'http://localhost:5000/gconnect?_csrf_token={{ csrf_token() }}',
-          contentType: 'application/octet-stream; charset=utf-8',
+          url: 'http://localhost:5000/gconnect',
+          contentType: 'application/json',
           success: function(info) {
             $('#login-msg').html('Login successful! <br> Hello ' + info.username + '<br> Redirecting...');
             if (info.new_user) {
@@ -59,7 +59,11 @@
             console.log($.parseJSON(jqXHR.responseText)['error-msg']);
           },
           processData: false,
-          data: authResult['code']
+          data: JSON.stringify({
+            "_csrf_token": "{{ csrf_token() }}",
+            "auth_code": authResult['code']
+          })
+
         });
       } else {
         console.log('One-time code missing in authResult');

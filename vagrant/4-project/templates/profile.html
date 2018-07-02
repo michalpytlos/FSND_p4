@@ -10,6 +10,7 @@
     <img src="{{ user.picture if user.picture != None }}" alt="Profile picture" width=25%>
     <p>{{ user.about if user.about != None }}</p>
   </div>
+  {% if owner %}
   <form class="ajax-form hidden">
     <input type="hidden" name="url" value="{{ url_for('profile_', user_id=user.id) }}">
     <input type="hidden" name="redirect" value="{{ url_for('profile_', user_id=user.id) }}">
@@ -34,6 +35,7 @@
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="submit" value="Delete profile">
   </form>
+  {% endif %}
   <p>Owned games</p>
   <table>
     <tr>
@@ -65,6 +67,7 @@
       <td></td>
       <td>{{ game.bgg_rating }}</td>
       <td>
+        {% if owner %}
         <form class="ajax-form">
           <input type="hidden" name="url" value="{{ url_for('profile_game_', user_id=user.id, game_id=game.id) }}">
           <input type="hidden" name="redirect" value="{{ url_for('profile_', user_id=user.id) }}">
@@ -72,14 +75,17 @@
           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
           <input type="submit" value="Delete">
         </form>
+        {% endif %}
       <td>
     </tr>
     {% endfor %}
   </table>
+  {% if owner %}
   <form action="{{ url_for('profile_game_add', user_id=user.id) }}" method="get">
     <input type=text name="name" value="">
     <input type="submit" value="Add game">
   </form >
+  {% endif %}
 </main>
 
 {% endblock %}
