@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="_csrf_token" content="{{ csrf_token() }}">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://apis.google.com/js/client:platform.js?onload=iniGAuth" async defer></script>
   <title>FSND project 4</title>
   <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,700" rel="stylesheet">
@@ -12,8 +14,23 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 <body>
+  <nav class="nav">
+    <ul>
+      <li><a href="{{ url_for('home') }}">home</a></li>
+      <li><a href="{{ url_for('game_finder') }}">game finder</a></li>
+      {% if session.user_id %}
+      <li><a href="{{ url_for('profile_', user_id=session.user_id) }}">my site</a></li>
+      <li>{{ session.username }}</li>
+      <li><button id="signoutButton">Sign out</button></li>
+      {% else %}
+      <li><button id="signinButton" class="signin-button"></button></li>
+      {% endif %}
+    </ul>
+  </nav>
+  <div id="login-msg"></div>
   {% block content %}
   {% endblock %}
 <script src="{{ url_for('static', filename='ajaxForm.js') }}"></script>
+<script src="{{ url_for('static', filename='signIn.js') }}"></script>
 </body>
 </html>

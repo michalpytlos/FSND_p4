@@ -10,3 +10,12 @@ table, th, td {
 .hidden {
   display:none;
 }
+
+.signin-button {
+       width: 181px;
+       height: 46px;
+       background-color: white;
+       border: 0;
+       background-image: url("../static/btn_google_signin_dark_normal_web@2x.png");
+       background-size: 100% 100%;
+     }

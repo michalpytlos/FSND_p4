@@ -22,14 +22,15 @@ def csrf_protect():
     # 'http://flask.pocoo.org/snippets/3/' posted by Dan Jacob on 2010-05-03 @ 11:29 and filed in Security
     # but with only one token per session
     if request.method in ('POST', 'PATCH', 'DELETE'):
-        print 'csrf protection: validating request'
+        print 'validating csrf token'
         print 'session: {}'.format(session)
         token = session.get('_csrf_token')
         if not token or token not in (request.form.get('_csrf_token'),
                                       request.get_json().get('_csrf_token') if request.get_json() else None):
+            print 'failed csrf token test'
             abort(403)
         else:
-            print 'csrf protection: request validated'
+            print 'csrf token ok'
 
 
 def generate_csrf_token():
@@ -360,12 +361,8 @@ def home():
     categories = category_dict(games)
     posts = Post.query.all()
     posts_read = make_posts_read(posts)
-    # check if the user is signed in and if he/she is the club admin
-    signed_in = 'username' in session
-    owner = check_ownership()
-    print signed_in, owner
     return render_template('club.html', club=club, posts=posts_read, members=members, games=games,
-                           categories=categories, signed_in=signed_in, owner=owner)
+                           categories=categories, owner=check_ownership())
 
 
 @app.route('/club', methods=['PATCH'])
@@ -431,13 +428,6 @@ def post_(post_id):
         return '', 204
 
 
-@app.route('/signin')
-def sign_in():
-    if 'username' in session:
-        redirect('/')
-    return render_template('sign-in.html')
-
-
 @app.route('/gconnect', methods=['POST'])
 def g_connect():
     # additional csrf check
@@ -471,7 +461,7 @@ def g_connect():
     return json_response(body, 200)
 
 
-@app.route('/gdisconnect')
+@app.route('/gdisconnect', methods=['POST'])
 def g_disconnect():
     print session
     # check if user is connected
