@@ -1,4 +1,4 @@
-from flask import Flask, render_template, url_for, request, redirect, session, abort, make_response
+from flask import Flask, render_template, url_for, request, redirect, session, abort, make_response, jsonify
 from database import db_session
 from models import Club, ClubGame, Game, Post,  User, UserGame, GameCategory, ClubAdmin
 import requests
@@ -9,6 +9,7 @@ import json
 import time
 import string
 import random
+from decimal import Decimal
 
 app = Flask(__name__)
 
@@ -283,13 +284,12 @@ def get_categories(bgame):
     return category_names
 
 
-def game_search_query_builder(key, value):
-    # return textual sql query for one argument of a game search request
-    # the returned query typically is just a part of a much longer query thus the 'AND' operator in the returned string
-    if len(value) == 0 or value == 'any':
-        return ''
-    d = {'name': "name LIKE '{value}%'",
-         'category': "(category_1='{value}' OR category_2='{value}' OR category_3='{value}')",
+def game_query_builder(key, value, query):
+    # modify textual sql query in order take into account an additional constraint
+    # the constraint is to be provided in the form of a key-value pair
+    d = {'id': "id in ({value})",
+         'name': "name LIKE '{value}%'",
+         'category': "(category_1 in ({value}) OR category_2 in ({value}) OR category_3 in ({value}))",
          'rating-min': 'bgg_rating>={value}',
          'players-from': 'min_players<={value}',
          'players-to': 'max_players>={value}',
@@ -298,7 +298,19 @@ def game_search_query_builder(key, value):
          'weight-min': 'weight>={value}',
          'weight-max': 'weight<={value}',
          }
-    return d[key].format(value=value) + ' AND '
+    if len(value) == 0 or value == 'any' or not d.get(key):
+        # do nothing
+        return query
+    elif key == 'id' and 'id in' in query:
+        pos = query.find(')', query.find('id in'))
+        return query[:pos] + ', ' + value + query[pos:]
+    elif key == 'category' and 'category_' in query:
+        for category in ['category_1', 'category_2', 'category_3']:
+            pos = query.find(')', query.find(category))
+            query = query[:pos] + ', ' + value + query[pos:]
+        return query
+    else:
+        return query + d[key].format(value=value) + ' AND '
 
 
 def multi_replace(my_string, repl_dict):
@@ -324,6 +336,52 @@ def patch_resource(attributes, my_obj):
         setattr(my_obj, attribute['name'], attribute['value'])
     db_session.add(my_obj)
     db_session.commit()
+
+
+def validate_api_game_query(query_dict):
+    """ validate keys and values of the query """
+    args_int = ['club', 'user', 'id', 'category', 'rating-min', 'players-from', 'players-to', 'time-from', 'time-to',
+                'weight-min', 'weight-max']
+    args_other = ['name']
+    args_dupl = ['user', 'id', 'category']
+    for key, value in query_dict.iteritems(multi=True):
+        if(
+            key not in args_int + args_other or  # check if any of the keys is invalid
+            key in args_int and not value.isdigit()  # check if any of the values is invalid
+        ):
+            return False
+    # check if there are any non-allowed key duplicates
+    for key, values in query_dict.iterlists():
+        if key not in args_dupl and len(values) > 1:
+            return False
+    # confirm that players-to >= players-from and that either both or none of these two keys are present
+    if (
+        'players-from' in query_dict and query_dict.get('players-to', -1, type=int) < int(query_dict['players-from']) or
+        'players-to' in query_dict and 'players-from' not in query_dict
+    ):
+        return False
+    return True
+
+
+def dicts_purge(p_dicts, *keep_keys):
+    # remove all keys not in keep_keys from each dictionary
+    for p_dict in p_dicts:
+        for key in p_dict.keys():
+            if key not in keep_keys:
+                del p_dict[key]
+    return p_dicts
+
+
+def sql_to_dicts(*games):
+    # convert a list of database objects to list of dictionaries
+    # each column-name-column-value pair in an object is converted to a key-value pair in the corresponding dictionary
+    sql_dicts = []
+    for game in games:
+        keys = game.__table__.columns.keys()
+        values = [getattr(game, key) for key in keys]
+        values = [float(value) if type(value) == Decimal else value for value in values]
+        sql_dicts.append(dict(zip(keys, values)))
+    return sql_dicts
 
 
 def init_club_info():
@@ -572,12 +630,79 @@ def game_finder():
     if len(request.args) > 0:
         query = ''
         for key, value in request.args.iteritems():
-            query += game_search_query_builder(key, value)
+            query = game_query_builder(key, value, query)
         query = query[:-5]
         print query
         games = Game.query.filter(sqlalchemy.text(query)).all()
         categories = category_dict(games)
     return render_template('game-finder.html', games=games, all_categories=all_categories, categories=categories)
+
+
+@app.route('/api/games')
+def api_games():
+    """
+    return list of game JSON objects satisfying the criteria provided in the request query string
+    query params are divided into two groups: ownership and game attributes
+    endpoint returns intersection of ownership and attributes sets
+
+    ownership params:   club=1 | include all games owned by the club
+                        user=INTEGER | value denotes user id | include all games owned by the user | multiple args=YES
+    game attribute args:
+                        id=INTEGER | value denotes game id | multiple args=YES
+                        name=NAME
+                        category=INTEGER | value denotes category id | multiple args=YES
+                        rating-min=[1-10]
+                        players-from=INTEGER | query must also include players-to
+                        players-to=INTEGER | query must also include players-from
+                        time-from=INTEGER
+                        time-to=INTEGER
+                        weight-min=[1-5]
+                        weight-max=[1-5]
+    """
+    if not validate_api_game_query(request.args):
+        return error_response('One or more query parameters have invalid key and/or value', 400)
+    # club filter
+    games_club = []
+    if request.args.get('club') == '1':
+        games_club = [game.game_id for game in ClubGame.query.all()]
+    print 'games_club', games_club
+    # user filter
+    users = [int(user_id) for user_id in request.args.getlist('user')]
+    games_user = [game.game_id for game in UserGame.query.filter(UserGame.user_id.in_(users)).all()]
+    print 'games_user', games_user
+    # attribute filter
+    query = ''
+    for key, value in request.args.iteritems(multi=True):
+        query = game_query_builder(key, value, query)
+    query = query[:-5]
+    attr_games = [game.id for game in Game.query.filter(sqlalchemy.text(query)).all()]
+    print 'games_query', attr_games
+    # union of club and user games
+    owned_games = set(games_club) | set(games_user)
+    print 'union', owned_games
+    # intersection of owned_games and attr_games
+    games_id = (set(attr_games) & owned_games) if len(owned_games) > 0 else set(attr_games)
+    print 'intersection', games_id
+    games = Game.query.filter(Game.id.in_(games_id)).all()
+    games_dict = sql_to_dicts(*games)
+    return jsonify(games=games_dict)
+
+
+@app.route('/api/info')
+def api_info():
+    # return basic information on all sql entries of a chosen type
+    # accepted request query params: users=1, categories=1 and games=1
+    d = {
+        'users': User.query.all(),
+        'categories': GameCategory.query.all(),
+        'games': Game.query.all()
+    }
+    info = {}
+    for key, value in request.args.iteritems():
+        if d.get(key) and value == '1':
+            sql_all_dict = sql_to_dicts(*d[key])
+            info[key] = dicts_purge(sql_all_dict, *['id', 'name', 'year_published'])
+    return jsonify(**info)
 
 
 if __name__ == '__main__':
