@@ -10,6 +10,7 @@ import time
 import string
 import random
 from decimal import Decimal
+import sqlalchemy.orm.exc
 
 app = Flask(__name__)
 
@@ -435,7 +436,7 @@ def club_():
 def club_game_add():
     if request.method == 'GET':
         # Show the game options matching the specified name
-        bgg_options = bgg_game_options(request.args.get('name'))
+        bgg_options = bgg_game_options(request.args['name'])
         return render_template('game-options.html', games=bgg_options)
     else:
         # Add the chosen game to the database
@@ -449,6 +450,10 @@ def club_game_add():
 @app.route('/club/games/<int:game_id>', methods=['DELETE'])
 def club_game_(game_id):
     club_game = ClubGame.query.filter_by(game_id=game_id).first()
+    try:
+        assert club_game is not None
+    except AssertionError:
+        abort(404)
     db_session.delete(club_game)
     db_session.commit()
     clear_games(game_id)
@@ -545,13 +550,19 @@ def g_disconnect():
 
 @app.route('/users/<int:user_id>/new')
 def profile_add(user_id):
-    user = get_user(user_id)
+    try:
+        user = User.query.filter_by(id=user_id).one()
+    except sqlalchemy.orm.exc.NoResultFound:
+        abort(404)
     return render_template('profile-new.html', user=user)
 
 
 @app.route('/users/<int:user_id>', methods=['GET', 'PATCH', 'DELETE'])
 def profile_(user_id):
-    user = get_user(user_id)
+    try:
+        user = User.query.filter_by(id=user_id).one()
+    except sqlalchemy.orm.exc.NoResultFound:
+        abort(404)  # can be raised only on GET request; PATCH and DELETE are protected by check_ownership()
     if request.method == 'GET':
         user_games = get_user_games(user_id)
         games_id = []
@@ -587,7 +598,7 @@ def profile_(user_id):
 def profile_game_add(user_id):
     if request.method == 'GET':
         # Show the game options matching the specified name
-        bgg_options = bgg_game_options(request.args.get('name'))
+        bgg_options = bgg_game_options(request.args['name'])
         return render_template('game-options.html', games=bgg_options)
     else:
         # Add the chosen game to the database
@@ -601,6 +612,10 @@ def profile_game_add(user_id):
 @app.route('/users/<int:user_id>/games/<int:game_id>', methods=['DELETE'])
 def profile_game_(user_id, game_id):
     user_game = UserGame.query.filter_by(user_id=user_id, game_id=game_id).first()
+    try:
+        assert user_game is not None
+    except AssertionError:
+        abort(404)
     db_session.delete(user_game)
     db_session.commit()
     clear_games(game_id)
@@ -609,7 +624,10 @@ def profile_game_(user_id, game_id):
 
 @app.route('/games/<int:game_id>', methods=['GET', 'POST'])
 def game_(game_id):
-    bgame = get_game(game_id)
+    try:
+        bgame = Game.query.filter_by(id=game_id).one()
+    except sqlalchemy.orm.exc.NoResultFound:
+        abort(404)
     if request.method == 'GET':
         categories = get_categories(bgame)
         return render_template('game.html', game=bgame, game_id=game_id, categories=categories)

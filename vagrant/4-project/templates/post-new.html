@@ -6,7 +6,7 @@
   <h2>New post</h2>
 </header>
 <main>
-<form method="post">
+<form name ="new-post" method="post" onsubmit="return validateForm()">
   <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
   <label for="subject">Subject</label><br>
   <input type="text" id="subject" name="subject"><br>
@@ -16,4 +16,16 @@
 </form>
 <a href="{{ url_for('home') }}">Cancel</a>
 </main>
+
+<script>
+  function validateForm(){
+    var post_subject = document.forms["new-post"]["subject"].value;
+    var post_body = document.forms["new-post"]["body"].value;
+    if (!post_subject || !post_body){
+      alert("Both subject and body of the post are required");
+      return false;
+    }
+  }
+</script>
+
 {% endblock %}
