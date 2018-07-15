@@ -64,6 +64,8 @@ function makePayload(formP){
 function updateToggle(editButton){
 //Toggle view for patch/delete forms
 	$(editButton).siblings('.update-hide, .ajax-form').toggleClass('hidden')
+	$(editButton).parent().siblings('.update-hide-uncle').toggleClass('hidden')
+	$(editButton).parent().parent().siblings('.update-hide-great-uncle').toggleClass('hidden')
 	if ($(editButton).text() == 'Cancel'){
 	  $(editButton).text($(editButton).val())
 	} else {

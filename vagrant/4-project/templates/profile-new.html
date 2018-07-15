@@ -1,32 +1,34 @@
 {% extends "base.html" %}
+
+{% block header %}<h1>User profile for {{ user.email }}</h1>{% endblock %}
+
 {% block content %}
 
-<header>
-  <h1>Board game club</h1>
-  <h2>User profile for {{ user.email }}</h2>
-</header>
 <main>
-  <form class="ajax-form">
-    <input type="hidden" name="url" value="{{ url_for('profile_', user_id=user.id) }}">
-    <input type="hidden" name="redirect" value="{{ url_for('profile_', user_id=user.id) }}">
-    <input type="hidden" name="method" value="PATCH">
-    <input type="hidden" name="type" value="user">
-    <input type="hidden" name="id" value="{{ user.id }}">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-    <label for="username">Name:</label>
-    <input type="text" id="username" name="name" value="{{ user.name }}"><br>
-    <img src="{{ user.picture if user.picture != None }}" alt="Profile picture" width=25%><br>
-    <label for="profile-picture">URL of the profile picture</label>
-    <input type="text" name="picture" value="{{ user.picture }}"><br><br>
-    <textarea name="about" placeholder="Describe yourself here..." rows="4" cols="50">{{ user.about if user.about != None }}</textarea><br>
-    <input type="submit" value="Create profile">
-  </form>
-  <form class="ajax-form" onclick="return confirm('Are you sure you want to delete your account?')">
-    <input type="hidden" name="url" value="{{ url_for('profile_', user_id=user.id) }}">
-    <input type="hidden" name="redirect" value="{{ url_for('g_disconnect') }}">
-    <input type="hidden" name="method" value="DELETE">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-    <input type="submit" value="Cancel">
-  </form>
+  <section>
+    <form class="ajax-form">
+      <input type="hidden" name="url" value="{{ url_for('profile_', user_id=user.id) }}">
+      <input type="hidden" name="redirect" value="{{ url_for('profile_', user_id=user.id) }}">
+      <input type="hidden" name="method" value="PATCH">
+      <input type="hidden" name="type" value="user">
+      <input type="hidden" name="id" value="{{ user.id }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <label for="username">Name</label><br>
+      <input type="text" id="username" name="name" value="{{ user.name }}"><br><br>
+      <img src="{{ user.picture if user.picture != None }}" alt="Profile picture" width=25%><br>
+      <label for="profile-picture">URL of the profile picture</label><br>
+      <input type="text" name="picture" value="{{ user.picture }}" size="100"><br><br>
+      <label for="about">About</label><br>
+      <textarea id="about" name="about" placeholder="Describe yourself here..." rows="10" cols="100">{{ user.about if user.about != None }}</textarea><br>
+      <input type="submit" value="Create profile" class="small-button">
+    </form>
+    <form class="ajax-form" onclick="return confirm('Are you sure you want to delete your account?')">
+      <input type="hidden" name="url" value="{{ url_for('profile_', user_id=user.id) }}">
+      <input type="hidden" name="redirect" value="{{ url_for('g_disconnect') }}">
+      <input type="hidden" name="method" value="DELETE">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <input type="submit" value="Cancel" class="small-button">
+    </form>
+  <section>
 </main>
 {% endblock %}

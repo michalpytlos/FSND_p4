@@ -1,18 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
-
-<header>
-  <h1>Board game club</h1>
-  <h2>Which game do you want to add to your profile?</h2>
-</header>
-<form method="post">
-  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-  {% for game in games %}
-  <input type="radio" name="bgg-id" value="{{ game['id'] }}" checked>{{ game['name'] }} ({{ game['year'] }})<br>
-  {% endfor %}
-  <input type="submit" value="Add game">
-</form>
 <main>
-<a href="{{ url_for('home') }}">Cancel</a>
+  <section>
+    <h2>Which game do you want to add to your profile?</h2>
+    <form method="post">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      {% for game in games %}
+      <input type="radio" name="bgg-id" value="{{ game['id'] }}" checked>{{ game['name'] }} ({{ game['year'] }})<br>
+      {% endfor %}
+      <br>
+      <input type="submit" value="Add game" class="small-button">
+    </form>
+    <a href="{{ url_for('home') }}" class="small-button">Cancel</a>
+  </section>
 </main>
 {% endblock %}

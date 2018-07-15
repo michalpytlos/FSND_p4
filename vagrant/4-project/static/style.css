@@ -1,21 +1,329 @@
-table {
-    border-collapse: collapse;
-    width: 60%;
+/* General */
+* {
+  box-sizing: border-box;
 }
 
-table, th, td {
-    border: 1px solid black;
+body {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  font: 14px "Roboto", sans-serif;
+}
+
+a {
+  color: black;
+}
+
+img {
+  display: block;
+}
+
+section {
+  margin-bottom: 30px;
+}
+
+label {
+  font-weight: bold;
+}
+
+
+/* Tables */
+table {
+    border-collapse: collapse;
+}
+
+th {
+  border: 1px solid rgb(200,200,200);
+  padding: 5px;
+}
+
+td {
+  border-left: 1px solid rgb(200,200,200);
+  border-right: 1px solid rgb(200,200,200);
+  padding: 5px;
+}
+
+td.no-border, th.no-border {
+  border: 0;
+}
+
+
+/* Sections */
+h2.section-header {
+  margin:0 0 5px 0;
+  font: 400 1.8em  "Roboto", sans-serif;
+}
+
+
+/* Buttons */
+.signin-button {
+  width: 181px;
+  height: 46px;
+  background-color: rgb(32,32,32);
+  border: 0;
+  background-image: url("btn_google_signin_dark_normal_web@2x.png");
+  background-size: 100% 100%;
+     }
+
+.small-button, .big-button {
+  font-family: "Roboto", sans-serif;
+  font-weight: bold;
+  color: rgb(32,32,32);
+  display: inline-block;
+  border: 1px solid rgb(32,32,32);
+  text-align: center;
+  padding: 0 10px;
+}
+
+.small-button {
+ height: 20px;
+ line-height: 20px;
+ font-size: 0.9em;
+ margin: 3px 6px 3px 0;
+ border-radius: 2px;
+ background-color: rgb(200,200,200);
+}
+
+.big-button {
+ height: 30px;
+ line-height: 30px;
+ font-size: 1em;
+ margin: 5px 10px 5px 0;
+ border-radius: 3px;
+ background-color: rgb(200,200,200);
+}
+
+.color-button {
+ background-color: rgb(255,228,181);
+}
+
+a.small-button, a.big-button {
+  text-decoration: none;
+}
+
+
+/* Navigation bar */
+.nav {
+  position: fixed;
+  height: 57px;
+  width: 100%;
+  z-index: 100;
+  top: 0;
+  padding: 5px;
+  border-bottom: 1px solid #4d4d4d;
+  background-color: rgb(32,32,32);
+  display: flex;
+  justify-content: space-between;
+}
+
+.nav-site {
+	width: 50%
+}
+
+.nav-sign {
+	width: 30%
+}
+
+.nav ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: space-around;
+}
+
+.nav li {
+  height: 46px;
+  line-height: 46px;
+  color: rgb(200,200,200);
+}
+
+.nav a {
+  text-decoration: none;
+  color: rgb(200,200,200);
+  font-size: 1.5em;
+}
+
+a.nav-active {
+  color: rgb(250,250,250);
+}
+
+.vertical-align-middle {
+  vertical-align: middle;
+}
+
+
+/* Header */
+.header {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 57px;
+  padding: 10px 0;
+}
+
+.header h1 {
+  margin: 0;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font: 400 2.5em  "Roboto", sans-serif;
+  padding: 10px 10px;
+}
+
+.header h3 {
+  color: rgb(100,100,100);
+  font-size: 1.2em;
+  margin: 0;
+  padding: 0 10px;
+}
+
+.header img {
+  height: 100px;
+  align-self: center;
+}
+
+
+/* Game content box in game.html */
+.game-content {
+  display: flex;
+}
+
+.game-content figure {
+  margin: 0 0 10px 0;
+  width: 30%;
+}
+
+.game-content img {
+  width: 100%;
+  align-self: center;
+}
+
+.game-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  width: 70%;
+  padding: 0 0 0 40px;
+}
+
+table.stats-table {
+  border-top: 1px solid rgb(200,200,200);
+  margin-bottom: 30px;
+  width: 100%;
+}
+
+.game-content th {
+  font-size: 1.8em;
+  border-bottom: 0;
+}
+
+.game-content td {
+  font-size: 1.2em;
+  text-align: center;
+  color: rgb(100,100,100);
+}
+
+
+/* Search table in game-finder.html */
+.game-finder-table input[type="number"] {
+    width:100%;
+}
+
+tr.search-row td {
+  border: 0;
+  padding: 0;
+}
+
+
+/* Section list in club.html and game.html */
+ul.section-list {
+  list-style-position: inside;
+  margin: 0;
+  padding: 0;
+}
+
+.section-list li {
+  padding: 3px;
+  color: rgb(100,100,100);
+  font-size: 1.2em;
+}
+
+.section-list a {
+  color: rgb(100,100,100);
+  text-decoration: none;
+}
+
+.section-list a:hover {
+  text-decoration: underline;
+}
+
+
+/* Games table in games-table.html */
+table.games-table {
+  margin-top: 10px;
+}
+
+.games-table a {
+  text-decoration: none;
+}
+
+.games-table a:hover {
+  text-decoration: underline;
+}
+
+
+/* Posts in club.html */
+.post {
+  border: 1px solid rgb(200,200,200);
+  padding: 10px;
+
+  width: 100%;
+  max-width: 800px;
+}
+
+.post-stamp-box {
+  margin: 15px 0 0 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.post-stamp {
+  display: flex;
+  font-size: 0.8em;
+}
+
+.post-stamp-box img {
+  height: 26px;
+  margin-right: 5px;
+}
+
+.post h3 {
+  margin-top: 0;
+}
+
+
+/* misc */
+.full-width {
+  width: 100%;
+}
+
+.inline-block-form {
+  display: inline-block;
 }
 
 .hidden {
   display:none;
 }
 
-.signin-button {
-       width: 181px;
-       height: 46px;
-       background-color: white;
-       border: 0;
-       background-image: url("../static/btn_google_signin_dark_normal_web@2x.png");
-       background-size: 100% 100%;
-     }
+
+/* Media queries  */
+@media screen and (min-width:1000px) {
+  body,
+  .header,
+  .nav {
+    width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}

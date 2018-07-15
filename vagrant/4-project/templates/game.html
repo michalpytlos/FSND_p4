@@ -1,42 +1,70 @@
 {% extends "base.html" %}
-{% block content %}
-<header>
-  <h1>Board game club</h1>
-  <h2>{{ game.name }}</h2>
-</header>
-<main>
-  <figure>
-    <img src="{{ game.image }}" alt="{{ game.name }}" width=25%>
-    <figcaption>Image and game info by <a href="{{ game.bgg_link }}">BoardGameGeek</a></figcaption>
-  </figure>
-  <h1>{{ game.name }} ({{ game.year_published }})</h1>
-  <div>{{ game.bgg_rating|round(2) }}</div>
-  {% for i in range(10) %}
-  <span class="fa fa-star checked"></span>
-  {% endfor %}
-  <!-- TODO: <p>Owned by:  game.owned'] </p> -->
-  <ul>
-    <li>Players: {{ game.min_players }} - {{ game.max_players }}</li>
-    <li>
-      {% if game.min_playtime == game.max_playtime %}
-        Playing time: {{ game.min_playtime }}min
-      {% else %}
-        Playing time: {{ game.min_playtime }} - {{ game.max_playtime }}min
-      {% endif %}
-    </li>
-    <li>Age: {{ game.min_age }}+</li>
-    <li>Complexity: {{ game.weight|round(2) }}/5</li>
-    <li>
-      Category:
-      {% for category in categories %}
-      {{ category }}
-      {% endfor %}
-    </li>
-  </ul>
-  <form method="post">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-    <input type="submit" value="Update game info">
-  </form>
 
+{% block header %}<h1>{{ game.name }}  ({{ game.year_published }})</h1>{% endblock %}
+
+{% block content %}
+
+<main>
+  <section>
+    <div class="game-content">
+      <figure>
+        <img src="{{ game.image }}" alt="{{ game.name }}">
+        <figcaption>Image and game info by <a href="{{ game.bgg_link }}">BoardGameGeek</a></figcaption>
+      </figure>
+      <div class="game-stats">
+        <table class="stats-table">
+          <tr>
+            <th class="no-border">{{ game.bgg_rating|round(1) }}</th>
+            <th>
+              {% if game.min_players == game.max_players %}
+                {{ game.min_players }} Players
+              {% else %}
+                {{ game.min_players }} - {{ game.max_players }} Players
+              {% endif %}
+            </th>
+            <th>
+              {% if game.min_playtime == game.max_playtime %}
+                {{ game.min_playtime }}min
+              {% else %}
+                {{ game.min_playtime }} - {{ game.max_playtime }}min
+              {% endif %}
+            </th>
+            <th>{{ game.min_age }}+</th>
+            <th class="no-border">{{ game.weight|round(2) }}/5</th>
+          </tr>
+          <tr>
+            <td class="no-border">BGG Rating</td>
+            <td></td>
+            <td>Playing time</td>
+            <td>Recommended age</td>
+            <td class="no-border">Complexity</td>
+          </tr>
+        </table>
+        <div>
+          <h2 class="section-header"><strong>Category</strong></h2>
+          <ul class="section-list">
+            {% for category in categories %}
+              <li>{{ category }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    <form method="post">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <input type="submit" value="Update game info" class="small-button">
+    </form>
+  </section>
+  <section>
+    <h2 class="section-header">Owned by</h2>
+    <ul class="section-list">
+      {% if club_owner %}
+      <li><a href="{{ url_for('home') }}">Board Game Club</a></li>
+      {% endif %}
+      {% for user_owner in user_owners %}
+        <li><a href="{{ url_for('profile_', user_id=user_owner.id) }}"> {{ user_owner.name }}</a></li>
+      {% endfor %}
+    </ul>
+  </section>
 </main>
 {% endblock %}

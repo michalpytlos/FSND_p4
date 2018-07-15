@@ -16,7 +16,7 @@ $('#signinButton').click(function() {
 
 function signInCallback(authResult) {
   if (authResult['code']) {
-	$('#signin-button').attr('style', 'display: none');
+	$('#signinButton').attr('style', 'display: none');
 	// Send the one-time code to the server
 	console.log('Sending one-time code to the server...')
 	$.ajax({

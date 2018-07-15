@@ -131,6 +131,7 @@ def bgg_game_options(bg_name):
     url = 'https://boardgamegeek.com/xmlapi2/search'
     payload = {'query': bg_name, 'type': 'boardgame'}
     r = requests.get(url, params=payload)
+    print r.url
     # Parse the xml response
     root = ElementTree.fromstring(r.content)
     for item in root.findall('item'):
@@ -230,18 +231,6 @@ def check_game(bgg_id):
     return bgame.id
 
 
-def get_game(game_id):
-    return Game.query.filter_by(id=game_id).scalar()
-
-
-def get_user(user_id):
-    return User.query.filter_by(id=user_id).scalar()
-
-
-def get_user_games(user_id):
-    return UserGame.query.filter_by(user_id=user_id).all()
-
-
 def category_dict(bgames):
     # return dictionary where each key is a game id and the corresponding value is a list of categories, given by name,
     # to which this game belongs
@@ -262,6 +251,7 @@ def make_posts_read(posts):
             'subject': post.subject,
             'body': post.body,
             'author': user.name,
+            'author_picture': user.picture,
             'posted': time.strftime("%d/%m/%Y, %H:%M", time.gmtime(post.posted)),
             'owner': post.user_id == user_id
         }
@@ -326,7 +316,7 @@ def clear_games(*games_id):
         user_game = UserGame.query.filter_by(game_id=game_id).first()
         club_game = ClubGame.query.filter_by(game_id=game_id).first()
         if not user_game and not club_game:
-            bgame = get_game(game_id)
+            bgame = Game.query.filter_by(id=game_id).scalar()
             db_session.delete(bgame)
     db_session.commit()
 
@@ -530,22 +520,21 @@ def g_disconnect():
     # check if user is connected
     if 'access_token' not in session:
         return error_response('Access token missing', 401)
-    # revoke access token
+    # revoke access token if possible
     r = requests.post('https://accounts.google.com/o/oauth2/revoke',
                       params={'token': session['access_token']},
                       headers={'content-type': 'application/x-www-form-urlencoded'})
-    # delete user info from session
-    if r.status_code == 200:
-        del session['email']
-        del session['username']
-        del session['access_token']
-        del session['user_id']
-        del session['_csrf_token']
-        print session
-        return json_response({'msg': 'Successfully disconnected'}, 200)
-    else:
+    if r.status_code != 200:
+        print 'Failed to revoke access token'
         print r.text
-        return error_response('Failed to revoke access token', 500)
+    # delete user info from session
+    del session['email']
+    del session['username']
+    del session['access_token']
+    del session['user_id']
+    del session['_csrf_token']
+    print session
+    return json_response({'msg': 'Successfully disconnected'}, 200)
 
 
 @app.route('/users/<int:user_id>/new')
@@ -564,7 +553,7 @@ def profile_(user_id):
     except sqlalchemy.orm.exc.NoResultFound:
         abort(404)  # can be raised only on GET request; PATCH and DELETE are protected by check_ownership()
     if request.method == 'GET':
-        user_games = get_user_games(user_id)
+        user_games = UserGame.query.filter_by(user_id=user_id).all()
         games_id = []
         for user_game in user_games:
             games_id.append(user_game.game_id)
@@ -572,7 +561,8 @@ def profile_(user_id):
         query = multi_replace(query, {'[': '(', ']': ')'})
         games = Game.query.filter(sqlalchemy.text(query)).all()
         categories = category_dict(games)
-        return render_template('profile.html', user=user, games=games, categories=categories, owner=check_ownership())
+        return render_template('profile.html', user=user, games=games, categories=categories, owner=check_ownership(),
+                               admin=ClubAdmin.query.filter_by(user_id=user_id).scalar())
     elif request.method == 'PATCH':
         attributes = request.get_json()['data']['attributes']
         patch_resource(attributes, user)
@@ -630,7 +620,17 @@ def game_(game_id):
         abort(404)
     if request.method == 'GET':
         categories = get_categories(bgame)
-        return render_template('game.html', game=bgame, game_id=game_id, categories=categories)
+        # get all owners of the game
+        game_owners = UserGame.query.filter_by(game_id=game_id).all()
+        owners_id = []
+        for game_owner in game_owners:
+            owners_id.append(game_owner.user_id)
+        query = 'id in {}'.format(owners_id)
+        query = multi_replace(query, {'[': '(', ']': ')'})
+        user_owners = User.query.filter(sqlalchemy.text(query)).all()
+        return render_template('game.html', game=bgame, categories=categories,
+                               club_owner=ClubGame.query.filter_by(game_id=game_id).scalar(),
+                               user_owners=user_owners)
     else:
         # Update game info from bgg API
         game_info = bgg_game_info(bgame.bgg_id)

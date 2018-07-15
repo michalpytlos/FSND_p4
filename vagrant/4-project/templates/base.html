@@ -9,24 +9,28 @@
   <title>FSND project 4</title>
   <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,700" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css?family=Muli:200,300,400" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 <body>
   <nav class="nav">
-    <ul>
-      <li><a href="{{ url_for('home') }}">home</a></li>
-      <li><a href="{{ url_for('game_finder') }}">game finder</a></li>
+    <ul class="nav-site">
+      <li><a href="{{ url_for('home') }}" id="nav-home"><i class="material-icons vertical-align-middle">home</i></a></li>
+      <li><a href="{{ url_for('game_finder') }}" id="nav-finder">Game finder</a></li>
       {% if session.user_id %}
-      <li><a href="{{ url_for('profile_', user_id=session.user_id) }}">my site</a></li>
-      <li>{{ session.username }}</li>
-      <li><button id="signoutButton">Sign out</button></li>
+      <li><a href="{{ url_for('profile_', user_id=session.user_id) }}" id="nav-profile">My profile</a></li>
+      {% endif %}
+    </ul>
+    <ul class="nav-sign">
+      {% if session.user_id %}
+      <li>Signed in as {{ session.username }}</li>
+      <li><button id="signoutButton" class="big-button">Sign out</button></li>
       {% else %}
       <li><button id="signinButton" class="signin-button"></button></li>
       {% endif %}
     </ul>
   </nav>
+  <header class="header">{% block header %}{% endblock %}</header>
   <div id="login-msg"></div>
   {% block content %}
   {% endblock %}
