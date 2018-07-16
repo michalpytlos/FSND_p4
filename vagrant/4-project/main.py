@@ -25,7 +25,6 @@ def csrf_protect():
     # but with only one token per session
     if request.method in ('POST', 'PATCH', 'DELETE'):
         print 'validating csrf token'
-        print 'session: {}'.format(session)
         token = session.get('_csrf_token')
         if not token or token not in (request.form.get('_csrf_token'),
                                       request.get_json().get('_csrf_token') if request.get_json() else None):
@@ -92,7 +91,7 @@ def login_required():
          request.endpoint == 'game_' and request.method == 'POST') and
         'username' not in session
     ):
-        return redirect('/signin')
+        abort(401)
 
 
 def validate_id_token(token, token_jwt):
@@ -375,6 +374,27 @@ def sql_to_dicts(*games):
     return sql_dicts
 
 
+def sign_out():
+    try:
+        # revoke access token if possible
+        r = requests.post('https://accounts.google.com/o/oauth2/revoke',
+                          params={'token': session['access_token']},
+                          headers={'content-type': 'application/x-www-form-urlencoded'})
+        if r.status_code != 200:
+            print 'Failed to revoke access token'
+            print r.text
+        # delete user info from session
+        del session['email']
+        del session['username']
+        del session['access_token']
+        del session['user_id']
+        del session['_csrf_token']
+        print 'Signed out'
+    except KeyError:
+        print 'Not signed in'
+        abort(401)
+
+
 def init_club_info():
     club = Club(name='Board Game Club')
     db_session.add(club)
@@ -516,25 +536,8 @@ def g_connect():
 
 @app.route('/gdisconnect', methods=['POST'])
 def g_disconnect():
-    print session
-    # check if user is connected
-    if 'access_token' not in session:
-        return error_response('Access token missing', 401)
-    # revoke access token if possible
-    r = requests.post('https://accounts.google.com/o/oauth2/revoke',
-                      params={'token': session['access_token']},
-                      headers={'content-type': 'application/x-www-form-urlencoded'})
-    if r.status_code != 200:
-        print 'Failed to revoke access token'
-        print r.text
-    # delete user info from session
-    del session['email']
-    del session['username']
-    del session['access_token']
-    del session['user_id']
-    del session['_csrf_token']
-    print session
-    return json_response({'msg': 'Successfully disconnected'}, 200)
+    sign_out()
+    return '', 204
 
 
 @app.route('/users/<int:user_id>/new')
@@ -581,6 +584,8 @@ def profile_(user_id):
             games_id.append(user_game.game_id)
         db_session.commit()
         clear_games(*games_id)
+        # sign out the user
+        sign_out()
         return '', 204
 
 

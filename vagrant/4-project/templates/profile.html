@@ -39,7 +39,7 @@
 
     <form class="ajax-form inline-block-form" onclick="return confirm('Are you sure you want to delete your account?')">
       <input type="hidden" name="url" value="{{ url_for('profile_', user_id=user.id) }}">
-      <input type="hidden" name="redirect" value="{{ url_for('g_disconnect') }}">
+      <input type="hidden" name="redirect" value="{{ url_for('home') }}">
       <input type="hidden" name="method" value="DELETE">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
       <input type="submit" value="Delete profile" class="small-button">
