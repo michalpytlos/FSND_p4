@@ -48,6 +48,7 @@ function signInCallback(authResult) {
 }
 
 $('#signoutButton').click(function() {
+	// Sign out user
 	$.ajax({
 	  method: 'POST',
 	  url: 'http://localhost:5000/gdisconnect',

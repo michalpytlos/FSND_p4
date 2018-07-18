@@ -4,6 +4,15 @@ from database import Base
 
 
 class User(Base):
+    """This class defines attributes of user profile and metadata of the table to which this class is mapped.
+
+    Attributes:
+        id (int): user's id
+        email (str): user's email address
+        name (str): user's name
+        about (str): text of the 'about' paragraph in the user's profile
+        picture (str): URL of the user's profile picture
+    """
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
     email = Column(String(80), nullable=False)
@@ -13,6 +22,27 @@ class User(Base):
 
 
 class Game(Base):
+    """This class defines attributes of board game and metadata of the table to which this class is mapped.
+
+    Attributes:
+       id (int): games's id
+       name (str): games's name
+       year_published (int): year in which the game was published
+       image (str): URL of the game picture on BoardGameGeek(BGG)
+       category_1 (int): id of a category to which this game belongs
+       category_2 (int): id of a category to which this game belongs
+       category_3 (int): id of a category to which this game belongs
+       min_age (int): minimum recommended player's age
+       weight (float): game's complexity rating
+       min_playtime (int): minimum game playtime in minutes
+       max_playtime (int): maximum game playtime in minutes
+       min_players (int): minimum number of players
+       max_players (int): maximum number of players
+       rating (float): game's average rating; attribute currently not used
+       bgg_rating (float): game's average rating on BGG
+       bgg_id (int): game's id on BGG
+       bgg_link (str): URL of the game's page on BGG
+    """
     __tablename__ = 'games'
     id = Column(Integer, primary_key=True)
     name = Column(String(80), nullable=False)
@@ -34,12 +64,27 @@ class Game(Base):
 
 
 class GameCategory(Base):
+    """This class defines attributes of game-category and metadata of the table to which this class is mapped.
+
+    Attributes:
+        id (int): category id
+        name (str): category name
+    """
     __tablename__ = 'game_categories'
     id = Column(Integer, primary_key=True)
     name = Column(String(80), nullable=False)
 
 
 class UserGame(Base):
+    """This class defines attributes of user's physical copy of a board game and metadata of the table to which this
+    class is mapped.
+
+    Attributes:
+        id (int): id of the physical copy of the game
+        user_id (int): id of the owner of the game
+        game_id (int): game's id
+        user_rating (int): owner's rating of the game; attribute currently not used
+    """
     __tablename__ = 'user_games'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -48,12 +93,27 @@ class UserGame(Base):
 
 
 class ClubGame(Base):
+    """This class defines attributes of club's physical copy of a board game and metadata of the table to which this
+    class is mapped.
+
+    Attributes:
+        id (int): id of the physical copy of the game
+        game_id (int): game's id
+    """
     __tablename__ = 'club_games'
     id = Column(Integer, primary_key=True)
     game_id = Column(Integer, ForeignKey('games.id'))
 
 
 class Club(Base):
+    """This class defines attributes of club profile and metadata of the table to which this class is mapped.
+
+        Attributes:
+            id (int): club's id
+            name (str): name of the club; attribute currently not used
+            about (str): text of the 'about' paragraph in the club's profile
+            picture (str): URL of the club's profile picture; attribute currently not used
+        """
     __tablename__ = 'clubs'
     id = Column(Integer, primary_key=True)
     name = Column(String(80), nullable=False)
@@ -62,12 +122,28 @@ class Club(Base):
 
 
 class ClubAdmin(Base):
+    """This class defines attributes of club's admin and metadata of the table to which this class is mapped.
+
+        Attributes:
+            id (int): admin's id
+            user_id (int): id of the user who is the admin
+        """
     __tablename__ = 'club_admins'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
 
 
 class Post(Base):
+    """This class defines attributes of post and metadata of the table to which this class is mapped.
+
+        Attributes:
+            id (int): post's id
+            user_id (int): id of the author of the post
+            subject (str): subject of the post
+            body (str): body of the post
+            posted (int): time in seconds elapsed between the epoch and the creation of the post
+            edited (int): time in seconds elapsed between the epoch and the last update of the post
+        """
     __tablename__ = 'posts'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))

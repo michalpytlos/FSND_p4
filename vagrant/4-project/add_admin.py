@@ -1,3 +1,4 @@
+#!/usr/bin/env python2.7
 from main import add_club_admin
 
 if __name__ == '__main__':
