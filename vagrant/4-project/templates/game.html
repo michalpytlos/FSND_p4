@@ -43,8 +43,8 @@
         <div>
           <h2 class="section-header"><strong>Category</strong></h2>
           <ul class="section-list">
-            {% for category in categories %}
-              <li>{{ category }}</li>
+            {% for category in game.categories %}
+              <li>{{ category.name }}</li>
             {% endfor %}
           </ul>
         </div>
@@ -58,10 +58,10 @@
   <section>
     <h2 class="section-header">Owned by</h2>
     <ul class="section-list">
-      {% if club_owner %}
+      {% if game.clubs %}
       <li><a href="{{ url_for('home') }}">Board Game Club</a></li>
       {% endif %}
-      {% for user_owner in user_owners %}
+      {% for user_owner in game.users %}
         <li><a href="{{ url_for('profile_', user_id=user_owner.id) }}"> {{ user_owner.name }}</a></li>
       {% endfor %}
     </ul>

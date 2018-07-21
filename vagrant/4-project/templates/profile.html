@@ -4,7 +4,7 @@
   <img src="{{ user.picture if user.picture != None }}" alt="Profile picture">
   <div>
     <h1>{{ user.name }}</h1>
-    {% if admin %}
+    {% if user.club_admin %}
       <h3>Club admin</h3>
     {% else %}
       <h3>Club member</h3>

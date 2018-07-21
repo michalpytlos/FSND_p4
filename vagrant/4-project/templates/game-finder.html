@@ -27,7 +27,7 @@
         <td><input type=text name="name"></td>
         <td colspan="3">
           <select name="category" style="width:100%;">
-            <option value="any">Any</option>
+            <option value="0">Any</option>
             {% for category in all_categories %}
               <option value={{category.id}}>{{category.name}}</option>
             {% endfor %}
@@ -73,7 +73,7 @@
   </section>
   <script>
     function validateForm(){
-      // Validate game-finder form 
+      // Validate game-finder form
       var p_from = document.forms["game-finder-form"]["players-from"].value;
       var p_to = document.forms["game-finder-form"]["players-to"].value;
       var t_from = document.forms["game-finder-form"]["time-from"].value;

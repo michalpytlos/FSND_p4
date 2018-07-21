@@ -1,6 +1,24 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Numeric
+from sqlalchemy import Table, Column, ForeignKey, Integer, String, Numeric
 from sqlalchemy.orm import relationship
 from database import Base
+
+
+users_games_assoc = Table('users_games', Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id')),
+    Column('game_id', Integer, ForeignKey('games.id'))
+)
+
+
+clubs_games_assoc = Table('clubs_games', Base.metadata,
+    Column('club_id', Integer, ForeignKey('clubs.id')),
+    Column('game_id', Integer, ForeignKey('games.id'))
+)
+
+
+games_categories_assoc = Table('games_categories', Base.metadata,
+    Column('game_id', Integer, ForeignKey('games.id')),
+    Column('category_id', Integer, ForeignKey('game_categories.id'))
+)
 
 
 class User(Base):
@@ -19,6 +37,15 @@ class User(Base):
     name = Column(String(80), nullable=False)
     about = Column(String(1000))
     picture = Column(String(80))
+    games = relationship("Game",
+                         secondary=users_games_assoc,
+                         back_populates="users")
+    posts = relationship("Post",
+                         cascade="all, delete-orphan",
+                         back_populates="author")
+    club_admin = relationship("ClubAdmin",
+                              uselist=False,
+                              cascade="all, delete-orphan")
 
 
 class Game(Base):
@@ -29,16 +56,12 @@ class Game(Base):
        name (str): games's name
        year_published (int): year in which the game was published
        image (str): URL of the game picture on BoardGameGeek(BGG)
-       category_1 (int): id of a category to which this game belongs
-       category_2 (int): id of a category to which this game belongs
-       category_3 (int): id of a category to which this game belongs
        min_age (int): minimum recommended player's age
        weight (float): game's complexity rating
        min_playtime (int): minimum game playtime in minutes
        max_playtime (int): maximum game playtime in minutes
        min_players (int): minimum number of players
        max_players (int): maximum number of players
-       rating (float): game's average rating; attribute currently not used
        bgg_rating (float): game's average rating on BGG
        bgg_id (int): game's id on BGG
        bgg_link (str): URL of the game's page on BGG
@@ -48,19 +71,24 @@ class Game(Base):
     name = Column(String(80), nullable=False)
     year_published = Column(Integer, nullable=False)
     image = Column(String(80), nullable=False)
-    category_1 = Column(Integer, ForeignKey('game_categories.id'))
-    category_2 = Column(Integer, ForeignKey('game_categories.id'))
-    category_3 = Column(Integer, ForeignKey('game_categories.id'))
     min_age = Column(Integer)
     weight = Column(Numeric(4, 3))
     min_playtime = Column(Integer)
     max_playtime = Column(Integer)
     min_players = Column(Integer)
     max_players = Column(Integer)
-    rating = Column(Numeric(4, 3))
     bgg_rating = Column(Numeric(4, 3))
     bgg_id = Column(Integer)
     bgg_link = Column(String(80))
+    categories = relationship("GameCategory",
+                              secondary=games_categories_assoc,
+                              back_populates="games")
+    users = relationship("User",
+                         secondary=users_games_assoc,
+                         back_populates="games")
+    clubs = relationship("Club",
+                         secondary=clubs_games_assoc,
+                         back_populates="games")
 
 
 class GameCategory(Base):
@@ -73,36 +101,9 @@ class GameCategory(Base):
     __tablename__ = 'game_categories'
     id = Column(Integer, primary_key=True)
     name = Column(String(80), nullable=False)
-
-
-class UserGame(Base):
-    """This class defines attributes of user's physical copy of a board game and metadata of the table to which this
-    class is mapped.
-
-    Attributes:
-        id (int): id of the physical copy of the game
-        user_id (int): id of the owner of the game
-        game_id (int): game's id
-        user_rating (int): owner's rating of the game; attribute currently not used
-    """
-    __tablename__ = 'user_games'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
-    game_id = Column(Integer, ForeignKey('games.id'))
-    user_rating = Column(Integer)
-
-
-class ClubGame(Base):
-    """This class defines attributes of club's physical copy of a board game and metadata of the table to which this
-    class is mapped.
-
-    Attributes:
-        id (int): id of the physical copy of the game
-        game_id (int): game's id
-    """
-    __tablename__ = 'club_games'
-    id = Column(Integer, primary_key=True)
-    game_id = Column(Integer, ForeignKey('games.id'))
+    games = relationship("Game",
+                         secondary=games_categories_assoc,
+                         back_populates="categories")
 
 
 class Club(Base):
@@ -119,6 +120,9 @@ class Club(Base):
     name = Column(String(80), nullable=False)
     about = Column(String(1000))
     picture = Column(String(80))
+    games = relationship("Game",
+                         secondary=clubs_games_assoc,
+                         back_populates="clubs")
 
 
 class ClubAdmin(Base):
@@ -151,3 +155,5 @@ class Post(Base):
     body = Column(String(1000), nullable=False)
     posted = Column(Integer, nullable=False)
     edited = Column(Integer)
+    author = relationship("User",
+                          back_populates="posts")

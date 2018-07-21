@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
 from flask import Flask, render_template, url_for, request, redirect, session, abort, make_response, jsonify
 from database import db_session
-from models import Club, ClubGame, Game, Post,  User, UserGame, GameCategory, ClubAdmin
+from models import Club, Game, Post,  User, GameCategory, ClubAdmin, clubs_games_assoc, users_games_assoc
 import requests
 from xml.etree import ElementTree
 import sqlalchemy
@@ -12,6 +12,7 @@ import string
 import random
 from decimal import Decimal
 import sqlalchemy.orm.exc
+
 
 app = Flask(__name__)
 
@@ -156,7 +157,7 @@ def bgg_game_options(bg_name):
 
 
 def bgg_game_info(bgg_id):
-    """Get game info from bgg API and return it as a dictionary."""
+    """Get game info from bgg API; return dictionary with game info and list of game category objects ."""
     game_info = {'bgg_id': bgg_id}
     url = 'https://www.boardgamegeek.com/xmlapi2/thing'
     payload = {'id': bgg_id, 'stats': 1}
@@ -169,18 +170,6 @@ def bgg_game_info(bgg_id):
             game_info['name'] = name.get('value')
     # image
     game_info['image'] = root.find('image').text
-    # categories (max 3)
-    categories = []
-    for link in root.findall('link'):
-        if link.get('type') == 'boardgamecategory':
-            categories.append(link.get('value'))
-    for i in range(3):
-        try:
-            category_name = categories[i]
-            category = check_game_category(category_name)
-        except IndexError:
-            category = ''
-        game_info['category_{}'.format(i+1)] = category
     # complexity/weight
     game_info['weight'] = root.find('statistics').find('ratings').find('averageweight').get('value')
     # bgg_rating
@@ -191,7 +180,12 @@ def bgg_game_info(bgg_id):
         game_info[property] = root.find(property.replace('_', '')).get('value')
 
     game_info['bgg_link'] = 'https://boardgamegeek.com/boardgame/{}/{}'.format(bgg_id, game_info['name'])
-    return game_info
+    # categories
+    categories = []
+    for link in root.findall('link'):
+        if link.get('type') == 'boardgamecategory':
+            categories.append(check_game_category(link.get('value')))
+    return game_info, categories
 
 
 def check_user(email, name, picture):
@@ -211,61 +205,31 @@ def check_user(email, name, picture):
 
 
 def check_game_category(category_name):
-    """Check if the game category is already in the database; if not, make a new entry. Return the category id."""
+    """Check if the game category is already in the database; if not, make a new entry. Return the category."""
     category = GameCategory.query.filter_by(name=category_name).scalar()
     if not category:
         new_category = GameCategory(name=category_name)
         db_session.add(new_category)
         db_session.commit()
         category = GameCategory.query.filter_by(name=category_name).scalar()
-    return category.id
+    return category
 
 
 def check_game(bgg_id):
-    """Check if the game is already in the database; if not, make a new entry. Return the game id."""
+    """Check if the game is already in the database; if not, make a new entry. Return the game."""
     bgame = Game.query.filter_by(bgg_id=bgg_id).scalar()
     if not bgame:
         # get the game info from bgg API
-        bgg_game = bgg_game_info(bgg_id)
+        game_info, bgg_categories = bgg_game_info(bgg_id)
         # add the game to the database
-        bgame = Game(**bgg_game)
+        bgame = Game(**game_info)
+        bgame.categories = bgg_categories
         db_session.add(bgame)
         db_session.commit()
         print 'Game added to the database!'
     else:
         print 'Game already in the database'
-    return bgame.id
-
-
-def category_dict(bgames):
-    """Return a dictionary with game category info for a set of games.
-
-    Args:
-        bgames (list): list of Game objects.
-
-    Returns:
-        Dictionary where each key is a game id and the corresponding value is a list of categories, given by name,
-        to which the game belongs.
-    """
-    # return
-    categories = {}
-    for bgame in bgames:
-        categories[str(bgame.id)] = get_categories(bgame)
-    return categories
-
-
-def get_categories(bgame):
-    """Return list of all categories, given by name, to which the game belongs."""
-    category_ids = []
-    category_names = []
-    for i in range(1, 4):
-        category = getattr(bgame, 'category_{}'.format(i))
-        if category:
-            category_ids.append(category)
-    for id in category_ids:
-        category = GameCategory.query.filter_by(id=id).scalar()
-        category_names.append(category.name)
-    return category_names
+    return bgame
 
 
 def make_posts_read(posts):
@@ -280,7 +244,7 @@ def make_posts_read(posts):
     posts_read = []
     user_id = session.get('user_id')
     for post in posts:
-        user = User.query.filter_by(id=post.user_id).scalar()
+        user = post.author
         post_dict = {
             'id': post.id,
             'subject': post.subject,
@@ -309,7 +273,6 @@ def game_query_builder(key, value, query):
     """
     d = {'id': "id in ({value})",
          'name': "name LIKE '{value}%'",
-         'category': "(category_1 in ({value}) OR category_2 in ({value}) OR category_3 in ({value}))",
          'rating-min': 'bgg_rating>={value}',
          'players-from': 'min_players<={value}',
          'players-to': 'max_players>={value}',
@@ -324,34 +287,29 @@ def game_query_builder(key, value, query):
     elif key == 'id' and 'id in' in query:
         pos = query.find(')', query.find('id in'))
         return query[:pos] + ', ' + value + query[pos:]
-    elif key == 'category' and 'category_' in query:
-        for category in ['category_1', 'category_2', 'category_3']:
-            pos = query.find(')', query.find(category))
-            query = query[:pos] + ', ' + value + query[pos:]
-        return query
     else:
         return query + d[key].format(value=value) + ' AND '
 
 
-def multi_replace(my_string, repl_dict):
-    """Extension of the built-in str.replace method: specify multiple 'old':'new' substring pairs in a dict."""
-    for key, value in repl_dict.iteritems():
-        my_string = my_string.replace(key, value)
-    return my_string
-
-
-def clear_games(*games_id):
+def clear_games(*games):
     """Remove orphaned games from the database.
 
     If any of the games is not owned by any user or the club, remove it from the database.
     """
-    for game_id in games_id:
-        user_game = UserGame.query.filter_by(game_id=game_id).first()
-        club_game = ClubGame.query.filter_by(game_id=game_id).first()
-        if not user_game and not club_game:
-            bgame = Game.query.filter_by(id=game_id).scalar()
-            db_session.delete(bgame)
-    db_session.commit()
+    for game in games:
+        if len(game.users) == 0 and len(game.clubs) == 0:
+            categories = game.categories
+            db_session.delete(game)
+            db_session.commit()
+            clear_categories(*categories)
+
+
+def clear_categories(*categories):
+    """Remove orphaned game categories from the database"""
+    for category in categories:
+        if len(category.games) == 0:
+            db_session.delete(category)
+            db_session.commit()
 
 
 def patch_resource(attributes, my_obj):
@@ -493,18 +451,11 @@ def home():
     """Return the app's main page."""
     club = Club.query.filter_by(id=1).scalar()
     members = User.query.all()
-    club_games = ClubGame.query.all()
-    games_id = []
-    for club_game in club_games:
-        games_id.append(club_game.game_id)
-    query = 'id in {}'.format(games_id)
-    query = multi_replace(query, {'[': '(', ']': ')'})
-    games = Game.query.filter(sqlalchemy.text(query)).all()
-    categories = category_dict(games)
     posts = Post.query.all()
     posts_read = make_posts_read(posts)
-    return render_template('club.html', club=club, posts=posts_read, members=members, games=games,
-                           categories=categories, owner=check_ownership())
+    return render_template('club.html', club=club, posts=posts_read, members=members,
+                           games=club.games,
+                           owner=check_ownership())
 
 
 @app.route('/club', methods=['PATCH'])
@@ -528,9 +479,10 @@ def club_game_add():
         return render_template('game-options.html', games=bgg_options)
     else:
         # Add the chosen game to the database
-        game_id = check_game(request.form['bgg-id'])
-        club_game = ClubGame(game_id=game_id)
-        db_session.add(club_game)
+        game = check_game(request.form['bgg-id'])
+        club = Club.query.filter_by(id=1).scalar()
+        club.games.append(game)
+        db_session.add(club)
         db_session.commit()
         return redirect(url_for('home'))
 
@@ -538,14 +490,14 @@ def club_game_add():
 @app.route('/club/games/<int:game_id>', methods=['DELETE'])
 def club_game_(game_id):
     """Delete ClubGame."""
-    club_game = ClubGame.query.filter_by(game_id=game_id).first()
+    club = Club.query.filter_by(id=1).scalar()
     try:
-        assert club_game is not None
-    except AssertionError:
+        game = Game.query.filter_by(id=game_id).one()
+    except sqlalchemy.orm.exc.NoResultFound:
         abort(404)
-    db_session.delete(club_game)
+    club.games.remove(game)
     db_session.commit()
-    clear_games(game_id)
+    clear_games(game)
     return '', 204
 
 
@@ -654,16 +606,8 @@ def profile_(user_id):
         abort(404)  # can be raised only on GET request; PATCH and DELETE are protected by check_ownership()
     if request.method == 'GET':
         # Return user's profile page
-        user_games = UserGame.query.filter_by(user_id=user_id).all()
-        games_id = []
-        for user_game in user_games:
-            games_id.append(user_game.game_id)
-        query = 'id in {}'.format(games_id)
-        query = multi_replace(query, {'[': '(', ']': ')'})
-        games = Game.query.filter(sqlalchemy.text(query)).all()
-        categories = category_dict(games)
-        return render_template('profile.html', user=user, games=games, categories=categories, owner=check_ownership(),
-                               admin=ClubAdmin.query.filter_by(user_id=user_id).scalar())
+        return render_template('profile.html', user=user, games=user.games,
+                               owner=check_ownership())
     elif request.method == 'PATCH':
         # Update Profile
         attributes = request.get_json()['data']['attributes']
@@ -671,21 +615,11 @@ def profile_(user_id):
         return '', 204
     else:
         # Delete Profile
+        games = user.games
         db_session.delete(user)
-        # delete all posts for this user
-        Post.query.filter_by(user_id=user_id).delete()
-        # remove the user from club admins
-        ClubAdmin.query.filter_by(user_id=user_id).delete()
-        # delete all user_games for this user
-        user_games = UserGame.query.filter_by(user_id=user_id).all()
-        games_id = []
-        for user_game in user_games:
-            db_session.delete(user_game)
-            games_id.append(user_game.game_id)
         db_session.commit()
-        clear_games(*games_id)
-        # sign out the user
-        sign_out()
+        clear_games(*games)
+        sign_out()  # remove the user from session
         return '', 204
 
 
@@ -701,9 +635,10 @@ def profile_game_add(user_id):
         return render_template('game-options.html', games=bgg_options)
     else:
         # Add the chosen game to the database
-        game_id = check_game(request.form['bgg-id'])
-        user_game = UserGame(user_id=user_id, game_id=game_id)
-        db_session.add(user_game)
+        game = check_game(request.form['bgg-id'])
+        user = User.query.filter_by(id=user_id).scalar()
+        user.games.append(game)
+        db_session.add(user)
         db_session.commit()
         return redirect(url_for('profile_', user_id=user_id))
 
@@ -711,14 +646,14 @@ def profile_game_add(user_id):
 @app.route('/users/<int:user_id>/games/<int:game_id>', methods=['DELETE'])
 def profile_game_(user_id, game_id):
     """Delete UserGame."""
-    user_game = UserGame.query.filter_by(user_id=user_id, game_id=game_id).first()
     try:
-        assert user_game is not None
-    except AssertionError:
+        user = User.query.filter_by(id=user_id).one()
+        game = Game.query.filter_by(id=game_id).one()
+    except sqlalchemy.orm.exc.NoResultFound:
         abort(404)
-    db_session.delete(user_game)
+    user.games.remove(game)
     db_session.commit()
-    clear_games(game_id)
+    clear_games(game)
     return '', 204
 
 
@@ -734,23 +669,13 @@ def game_(game_id):
         abort(404)
     if request.method == 'GET':
         # Return game page
-        categories = get_categories(bgame)
-        # get all owners of the game
-        game_owners = UserGame.query.filter_by(game_id=game_id).all()
-        owners_id = []
-        for game_owner in game_owners:
-            owners_id.append(game_owner.user_id)
-        query = 'id in {}'.format(owners_id)
-        query = multi_replace(query, {'[': '(', ']': ')'})
-        user_owners = User.query.filter(sqlalchemy.text(query)).all()
-        return render_template('game.html', game=bgame, categories=categories,
-                               club_owner=ClubGame.query.filter_by(game_id=game_id).scalar(),
-                               user_owners=user_owners)
+        return render_template('game.html', game=bgame)
     else:
         # Update game info from bgg API
-        game_info = bgg_game_info(bgame.bgg_id)
+        game_info, bgg_categories = bgg_game_info(bgame.bgg_id)
         for key, value in game_info.iteritems():
             setattr(bgame, key, value)
+        bgame.categories = bgg_categories
         db_session.commit()
         return redirect(url_for('game_', game_id=game_id))
 
@@ -760,16 +685,22 @@ def game_finder():
     """Return game-finder page."""
     all_categories = GameCategory.query.all()
     games = []
-    categories = {}
     if len(request.args) > 0:
+        # build SQL query
         query = ''
         for key, value in request.args.iteritems():
             query = game_query_builder(key, value, query)
         query = query[:-5]
         print query
-        games = Game.query.filter(sqlalchemy.text(query)).all()
-        categories = category_dict(games)
-    return render_template('game-finder.html', games=games, all_categories=all_categories, categories=categories)
+        # get games satisfying the search criteria
+        game_category = int(request.args['category'])
+        if game_category == 0:
+            games = Game.query.filter(sqlalchemy.text(query)).all()
+        else:
+            # consider game category
+            games = (Game.query.filter(sqlalchemy.text(query)).filter(
+                Game.categories.any(GameCategory.id == game_category)).all())
+    return render_template('game-finder.html', games=games, all_categories=all_categories)
 
 
 @app.route('/api/games')
@@ -804,18 +735,27 @@ def api_games():
     # club filter
     games_club = []
     if request.args.get('club') == '1':
-        games_club = [game.game_id for game in ClubGame.query.all()]
+        games_club = [club_game.game_id for club_game in db_session.query(clubs_games_assoc).all()]
     print 'games_club', games_club
     # user filter
     users = [int(user_id) for user_id in request.args.getlist('user')]
-    games_user = [game.game_id for game in UserGame.query.filter(UserGame.user_id.in_(users)).all()]
+    games_user = [game.game_id for game in
+                  db_session.query(users_games_assoc)
+                      .filter(users_games_assoc.c.user_id.in_(users)).all()]
     print 'games_user', games_user
     # attribute filter
     query = ''
     for key, value in request.args.iteritems(multi=True):
         query = game_query_builder(key, value, query)
     query = query[:-5]
-    attr_games = [game.id for game in Game.query.filter(sqlalchemy.text(query)).all()]
+    categories = request.args.getlist('category')
+    if len(categories) == 0:
+        attr_games = Game.query.filter(sqlalchemy.text(query)).all()
+    else:
+        # consider game categories
+        attr_games = (Game.query.filter(sqlalchemy.text(query)).filter(
+            Game.categories.any(GameCategory.id.in_(categories))).all())
+    attr_games = [game.id for game in attr_games]
     print 'games_query', attr_games
     # union of club and user games
     owned_games = set(games_club) | set(games_user)
