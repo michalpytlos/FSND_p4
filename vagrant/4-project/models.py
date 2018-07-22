@@ -3,26 +3,33 @@ from sqlalchemy.orm import relationship
 from database import Base
 
 
-users_games_assoc = Table('users_games', Base.metadata,
+users_games_assoc = Table(
+    'users_games',
+    Base.metadata,
     Column('user_id', Integer, ForeignKey('users.id')),
     Column('game_id', Integer, ForeignKey('games.id'))
 )
 
 
-clubs_games_assoc = Table('clubs_games', Base.metadata,
+clubs_games_assoc = Table(
+    'clubs_games',
+    Base.metadata,
     Column('club_id', Integer, ForeignKey('clubs.id')),
     Column('game_id', Integer, ForeignKey('games.id'))
 )
 
 
-games_categories_assoc = Table('games_categories', Base.metadata,
+games_categories_assoc = Table(
+    'games_categories',
+    Base.metadata,
     Column('game_id', Integer, ForeignKey('games.id')),
     Column('category_id', Integer, ForeignKey('game_categories.id'))
 )
 
 
 class User(Base):
-    """This class defines attributes of user profile and metadata of the table to which this class is mapped.
+    """This class defines attributes of user profile and metadata of the
+    table to which this class is mapped.
 
     Attributes:
         id (int): user's id
@@ -49,7 +56,8 @@ class User(Base):
 
 
 class Game(Base):
-    """This class defines attributes of board game and metadata of the table to which this class is mapped.
+    """This class defines attributes of board game and metadata of the
+    table to which this class is mapped.
 
     Attributes:
        id (int): games's id
@@ -92,7 +100,8 @@ class Game(Base):
 
 
 class GameCategory(Base):
-    """This class defines attributes of game-category and metadata of the table to which this class is mapped.
+    """This class defines attributes of game-category and metadata of
+    the table to which this class is mapped.
 
     Attributes:
         id (int): category id
@@ -107,13 +116,14 @@ class GameCategory(Base):
 
 
 class Club(Base):
-    """This class defines attributes of club profile and metadata of the table to which this class is mapped.
+    """This class defines attributes of club profile and metadata of the
+    table to which this class is mapped.
 
         Attributes:
             id (int): club's id
             name (str): name of the club; attribute currently not used
             about (str): text of the 'about' paragraph in the club's profile
-            picture (str): URL of the club's profile picture; attribute currently not used
+            picture (str): URL of the club's profile picture; not used
         """
     __tablename__ = 'clubs'
     id = Column(Integer, primary_key=True)
@@ -126,7 +136,8 @@ class Club(Base):
 
 
 class ClubAdmin(Base):
-    """This class defines attributes of club's admin and metadata of the table to which this class is mapped.
+    """This class defines attributes of club's admin and metadata of
+    the table to which this class is mapped.
 
         Attributes:
             id (int): admin's id
@@ -138,15 +149,18 @@ class ClubAdmin(Base):
 
 
 class Post(Base):
-    """This class defines attributes of post and metadata of the table to which this class is mapped.
+    """This class defines attributes of post and metadata of the table
+    to which this class is mapped.
 
         Attributes:
             id (int): post's id
             user_id (int): id of the author of the post
             subject (str): subject of the post
             body (str): body of the post
-            posted (int): time in seconds elapsed between the epoch and the creation of the post
-            edited (int): time in seconds elapsed between the epoch and the last update of the post
+            posted (int): time in seconds elapsed between the epoch and
+                the creation of the post
+            edited (int): time in seconds elapsed between the epoch and
+                the last update of the post
         """
     __tablename__ = 'posts'
     id = Column(Integer, primary_key=True)

@@ -1,23 +1,26 @@
 #!/usr/bin/env python2.7
-from flask import Flask, render_template, url_for, request, redirect, session, abort, make_response, jsonify
-from database import db_session
-from models import Club, Game, Post,  User, GameCategory, ClubAdmin, clubs_games_assoc, users_games_assoc
+from flask import (Flask, render_template, url_for, request, redirect, session,
+                   abort, make_response, jsonify)
+import sqlalchemy
+import sqlalchemy.orm.exc
 import requests
 from xml.etree import ElementTree
-import sqlalchemy
-from oauth2client import client
 import json
 import time
 import string
 import random
 from decimal import Decimal
-import sqlalchemy.orm.exc
+from oauth2client import client
+from database import db_session
+from models import (Club, Game, Post,  User, GameCategory, ClubAdmin,
+                    clubs_games_assoc, users_games_assoc)
 
 
 app = Flask(__name__)
 
 CLIENT_SECRET_FILE = 'client_secret.json'
-CLIENT_ID = json.loads(open('client_secret.json', 'r').read())['web']['client_id']
+CLIENT_ID = json.loads(
+    open('client_secret.json', 'r').read())['web']['client_id']
 
 
 @app.before_request
@@ -25,14 +28,18 @@ def csrf_protect():
     """Abort create, update and delete requests without correct csrf tokens.
 
     Csrf protection as per:
-    'http://flask.pocoo.org/snippets/3/' posted by Dan Jacob on 2010-05-03 @ 11:29 and filed in Security
+    'http://flask.pocoo.org/snippets/3/' posted by Dan Jacob on 2010-05-03
     but with only one token per session.
     """
     if request.method in ('POST', 'PATCH', 'DELETE'):
         print 'validating csrf token'
         token = session.get('_csrf_token')
-        if not token or token not in (request.form.get('_csrf_token'),
-                                      request.get_json().get('_csrf_token') if request.get_json() else None):
+        token_from_json = request.get_json().get(
+            '_csrf_token') if request.get_json() else None
+        if (
+            not token or
+            token not in (request.form.get('_csrf_token'), token_from_json)
+        ):
             print 'failed csrf token test'
             abort(403)
         else:
@@ -64,8 +71,13 @@ def remove_session(exception=None):
 
 @app.before_request
 def ownership_required():
-    """Prevent access to update and delete endpoints by non-authorized users."""
-    if request.endpoint in ('profile_game_add', 'club_game_add') or request.method in ('PATCH', 'DELETE'):
+    """Prevent access to update and delete endpoints by
+    non-authorized users.
+    """
+    if (
+        request.endpoint in ('profile_game_add', 'club_game_add') or
+        request.method in ('PATCH', 'DELETE')
+    ):
         print 'checking ownership'
         if 'user_id' not in session or not check_ownership():
             abort(403)
@@ -79,11 +91,14 @@ def check_ownership():
     if not user_id:
         return False
     elif 'club_' in request.endpoint or 'home' in request.endpoint:
-        return True if ClubAdmin.query.filter_by(user_id=user_id).scalar() else False
+        admin = ClubAdmin.query.filter_by(user_id=user_id).scalar()
+        return True if admin else False
     elif 'profile_' in request.endpoint:
         return request.view_args['user_id'] == user_id
     elif request.endpoint == 'post_':
-        return True if Post.query.filter_by(id=request.view_args['post_id'], user_id=user_id).scalar() else False
+        owned_post = Post.query.filter_by(
+            id=request.view_args['post_id'], user_id=user_id).scalar()
+        return True if owned_post else False
     else:
         print 'Unable to verify ownership'
         return False
@@ -101,16 +116,23 @@ def login_required():
 
 
 def validate_id_token(token, token_jwt):
-    """Validate id_token as per 'https://developers.google.com/identity/protocols/OpenIDConnect'."""
+    """Validate id_token as per
+    https://developers.google.com/identity/protocols/OpenIDConnect.
+    """
     url = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
     params = 'id_token={}'.format(token_jwt)
     r = requests.get(url, params=params)
 
     if (
-        r.status_code == 200 and r.json()['aud'] == token['aud'] and  # is the token properly signed by the issuer?
-        token['iss'] in ('https://accounts.google.com', 'accounts.google.com') and  # was it issued by google?
-        token['aud'] == CLIENT_ID and  # is it intended for this app?
-        token['exp'] > int(time.time())  # is it still valid (not expired)?
+        # Is the token properly signed by the issuer?
+        r.status_code == 200 and r.json()['aud'] == token['aud'] and
+        # Was it issued by google?
+        token['iss'] in ('https://accounts.google.com',
+                         'accounts.google.com') and
+        # Is it intended for this app?
+        token['aud'] == CLIENT_ID and
+        # Is it still valid (not expired)?
+        token['exp'] > int(time.time())
     ):
         return True
 
@@ -157,7 +179,9 @@ def bgg_game_options(bg_name):
 
 
 def bgg_game_info(bgg_id):
-    """Get game info from bgg API; return dictionary with game info and list of game category objects ."""
+    """Get game info from bgg API; return dictionary with game info and
+    list of game category objects .
+    """
     game_info = {'bgg_id': bgg_id}
     url = 'https://www.boardgamegeek.com/xmlapi2/thing'
     payload = {'id': bgg_id, 'stats': 1}
@@ -171,15 +195,19 @@ def bgg_game_info(bgg_id):
     # image
     game_info['image'] = root.find('image').text
     # complexity/weight
-    game_info['weight'] = root.find('statistics').find('ratings').find('averageweight').get('value')
+    game_info['weight'] = root.find('statistics').find('ratings').find(
+        'averageweight').get('value')
     # bgg_rating
-    game_info['bgg_rating'] = root.find('statistics').find('ratings').find('average').get('value')
+    game_info['bgg_rating'] = root.find('statistics').find('ratings').find(
+        'average').get('value')
     # other properties
-    properties = ['year_published', 'min_age', 'min_playtime', 'max_playtime', 'min_players', 'max_players']
-    for property in properties:
-        game_info[property] = root.find(property.replace('_', '')).get('value')
+    properties = ['year_published', 'min_age', 'min_playtime', 'max_playtime',
+                  'min_players', 'max_players']
+    for bg_prop in properties:
+        game_info[bg_prop] = root.find(bg_prop.replace('_', '')).get('value')
 
-    game_info['bgg_link'] = 'https://boardgamegeek.com/boardgame/{}/{}'.format(bgg_id, game_info['name'])
+    game_info['bgg_link'] = 'https://boardgamegeek.com/boardgame/{}/{}'.format(
+        bgg_id, game_info['name'])
     # categories
     categories = []
     for link in root.findall('link'):
@@ -189,7 +217,9 @@ def bgg_game_info(bgg_id):
 
 
 def check_user(email, name, picture):
-    """Check if the user is already in the database; if not, make a new entry. Return user's id."""
+    """Check if the user is already in the database;
+    if not, make a new entry. Return user's id.
+    """
     user = User.query.filter_by(email=email).scalar()
     new_user = False
     if not user:
@@ -205,7 +235,9 @@ def check_user(email, name, picture):
 
 
 def check_game_category(category_name):
-    """Check if the game category is already in the database; if not, make a new entry. Return the category."""
+    """Check if the game category is already in the database;
+    if not, make a new entry. Return the category.
+    """
     category = GameCategory.query.filter_by(name=category_name).scalar()
     if not category:
         new_category = GameCategory(name=category_name)
@@ -216,12 +248,14 @@ def check_game_category(category_name):
 
 
 def check_game(bgg_id):
-    """Check if the game is already in the database; if not, make a new entry. Return the game."""
+    """Check if the game is already in the database;
+    if not, make a new entry. Return the game.
+    """
     bgame = Game.query.filter_by(bgg_id=bgg_id).scalar()
     if not bgame:
-        # get the game info from bgg API
+        # Get the game info from bgg API
         game_info, bgg_categories = bgg_game_info(bgg_id)
-        # add the game to the database
+        # Add the game to the database
         bgame = Game(**game_info)
         bgame.categories = bgg_categories
         db_session.add(bgame)
@@ -239,7 +273,8 @@ def make_posts_read(posts):
         posts (list): list of Post objects.
 
     Returns:
-         List of dictionaries. Each dictionary holds all the post data required by the template engine.
+         List of dictionaries. Each dictionary holds all the post data
+         required by the template engine.
     """
     posts_read = []
     user_id = session.get('user_id')
@@ -251,17 +286,20 @@ def make_posts_read(posts):
             'body': post.body,
             'author': user.name,
             'author_picture': user.picture,
-            'posted': time.strftime("%d/%m/%Y, %H:%M", time.gmtime(post.posted)),
+            'posted': time.strftime("%d/%m/%Y, %H:%M",
+                                    time.gmtime(post.posted)),
             'owner': post.user_id == user_id
         }
         if post.edited:
-            post_dict['edited'] = time.strftime("%d/%m/%Y, %H:%M", time.gmtime(post.edited))
+            post_dict['edited'] = time.strftime("%d/%m/%Y, %H:%M",
+                                                time.gmtime(post.edited))
         posts_read.append(post_dict)
     return posts_read
 
 
 def game_query_builder(key, value, query):
-    """Modify textual sql query in order take into account an additional WHERE condition.
+    """Modify textual sql query in order take into account an additional
+    WHERE condition.
 
     Args:
         key (str): condition name.
@@ -294,7 +332,8 @@ def game_query_builder(key, value, query):
 def clear_games(*games):
     """Remove orphaned games from the database.
 
-    If any of the games is not owned by any user or the club, remove it from the database.
+    If any of the games is not owned by any user or the club,
+    remove it from the database.
     """
     for game in games:
         if len(game.users) == 0 and len(game.clubs) == 0:
@@ -316,8 +355,9 @@ def patch_resource(attributes, my_obj):
     """Patch database resource.
 
     Args:
-        attributes (list): list of dictionaries; each dict is in the following format:
-        {'name': attr_name, 'value': attr_value}.
+        attributes (list): list of dictionaries;
+            each dictionary is in the following format:
+            {'name': attr_name, 'value': attr_value}.
         my_obj: instance of any of the models classes.
     """
     for attribute in attributes:
@@ -330,30 +370,39 @@ def validate_api_game_query(query_dict):
     """Validate keys and values of the query.
 
     Args:
-        query_dict (dict): dictionary where each key:value pair represents condition-name:condition-value pair of an SQL
-        WHERE condition.
+        query_dict (dict): dictionary where each key:value pair
+            represents condition-name:condition-value pair of
+            an SQL WHERE condition.
 
     Returns:
         bool: True if all keys and values are valid, False otherwise.
     """
-    args_int = ['club', 'user', 'id', 'category', 'rating-min', 'players-from', 'players-to', 'time-from', 'time-to',
-                'weight-min', 'weight-max']
+    args_int = ['club', 'user', 'id', 'category', 'rating-min', 'players-from',
+                'players-to', 'time-from', 'time-to', 'weight-min',
+                'weight-max']
     args_other = ['name']
     args_dupl = ['user', 'id', 'category']
     for key, value in query_dict.iteritems(multi=True):
         if(
-            key not in args_int + args_other or  # check if any of the keys is invalid
-            key in args_int and not value.isdigit()  # check if any of the values is invalid
+            # Check if any of the keys is invalid
+            key not in args_int + args_other or
+            # Check if any of the values is invalid
+            key in args_int and not value.isdigit()
         ):
             return False
-    # check if there are any non-allowed key duplicates
+    # Check if there are any non-allowed key duplicates
     for key, values in query_dict.iterlists():
         if key not in args_dupl and len(values) > 1:
             return False
-    # confirm that players-to >= players-from and that either both or none of these two keys are present
-    if (
-        'players-from' in query_dict and query_dict.get('players-to', -1, type=int) < int(query_dict['players-from']) or
-        'players-to' in query_dict and 'players-from' not in query_dict
+    # Validate players-to and players-from
+    players = ['players-from', 'players-to']
+    if not(
+        # None of the two keys is present
+        not any([x in query_dict for x in players]) or
+        # Both keys are present and ...
+        all([x in query_dict for x in players]) and
+        # ... their values are valid
+        int(query_dict['players-to']) >= int(query_dict['players-from'])
     ):
         return False
     return True
@@ -379,7 +428,8 @@ def dicts_purge(p_dicts, *keep_keys):
 def sql_to_dicts(*games):
     """Convert Game objects to dictionaries.
 
-    Each column-name:value pair in an object is converted to a key:value pair in the corresponding dictionary.
+    Each column-name:value pair in an object is converted to a
+    key:value pair in the corresponding dictionary.
 
     Args:
         *games: list of Game objects.
@@ -391,7 +441,8 @@ def sql_to_dicts(*games):
     for game in games:
         keys = game.__table__.columns.keys()
         values = [getattr(game, key) for key in keys]
-        values = [float(value) if type(value) == Decimal else value for value in values]
+        values = [float(value) if type(value) == Decimal
+                  else value for value in values]
         sql_dicts.append(dict(zip(keys, values)))
     return sql_dicts
 
@@ -399,14 +450,15 @@ def sql_to_dicts(*games):
 def sign_out():
     """Sign out a user."""
     try:
-        # revoke access token if possible
-        r = requests.post('https://accounts.google.com/o/oauth2/revoke',
-                          params={'token': session['access_token']},
-                          headers={'content-type': 'application/x-www-form-urlencoded'})
+        # Revoke access token if possible
+        r = requests.post(
+            'https://accounts.google.com/o/oauth2/revoke',
+            params={'token': session['access_token']},
+            headers={'content-type': 'application/x-www-form-urlencoded'})
         if r.status_code != 200:
             print 'Failed to revoke access token'
             print r.text
-        # delete user info from session
+        # Delete user info from session
         del session['email']
         del session['username']
         del session['access_token']
@@ -421,7 +473,8 @@ def sign_out():
 def init_club_info():
     """Add Board Game Club to the database.
 
-    Function used only when creating a new database. Call this function directly from a Python interpreter.
+    Function used only when creating a new database.
+    Call this function directly from a Python interpreter.
     """
     club = Club(name='Board Game Club')
     db_session.add(club)
@@ -434,17 +487,18 @@ def add_club_admin(email):
     Function used by the external program add_admin.
     """
     user = User.query.filter_by(email=email).scalar()
-    if user:
+    if not user:
+        print 'User not found'
+    elif user.club_admin:
+        print 'User is already an admin'
+    else:
         admin = ClubAdmin(user_id=user.id)
         db_session.add(admin)
         db_session.commit()
         print 'User added to club admins'
-    else:
-        print 'User not found'
 
 
-'''*****************************************    HANDLERS BELOW     **************************************************'''
-
+# View functions
 
 @app.route('/')
 def home():
@@ -453,8 +507,8 @@ def home():
     members = User.query.all()
     posts = Post.query.all()
     posts_read = make_posts_read(posts)
-    return render_template('club.html', club=club, posts=posts_read, members=members,
-                           games=club.games,
+    return render_template('club.html', club=club, posts=posts_read,
+                           members=members, games=club.games,
                            owner=check_ownership())
 
 
@@ -546,34 +600,40 @@ def post_(post_id):
 @app.route('/gconnect', methods=['POST'])
 def g_connect():
     """Sign in user."""
-    # additional csrf check
+    # Additional csrf check
     if not request.headers.get('X-Requested-With'):
         abort(403)
-    # get one-time code from the end-user
+    # Get one-time code from the end-user
     auth_code = request.get_json().get('auth_code')
-    # exchange one-time code for id_token and access_token
+    # Exchange one-time code for id_token and access_token
     try:
         credentials = client.credentials_from_clientsecrets_and_code(
             CLIENT_SECRET_FILE,
-            ['https://www.googleapis.com/auth/drive.appdata', 'profile', 'email'],
+            ['https://www.googleapis.com/auth/drive.appdata', 'profile',
+             'email'],
             auth_code)
     except client.FlowExchangeError:
-        return error_response('Failed to upgrade one-time authorization code.', 401)
-    # validate id_token
+        return error_response('Failed to upgrade one-time authorization code.',
+                              401)
+    # Validate id_token
     if not validate_id_token(credentials.id_token, credentials.id_token_jwt):
         return error_response('id token is not valid', 500)
-    # get user info from access token
+    # Get user info from access token
     userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
     params = {'access_token': credentials.access_token, 'alt': 'json'}
     answer = requests.get(userinfo_url, params=params)
     user_data = answer.json()
-    # store user info in the session for later use
+    # Store user info in the session for later use
     session['email'] = credentials.id_token['email']
     session['username'] = user_data['name']
     session['access_token'] = credentials.access_token
     # If the user does not exist, add him to the database
-    session['user_id'], new_user = check_user(session['email'], session['username'],  user_data['picture'])
-    body = {'username': user_data['name'], 'user_id': session['user_id'], 'new_user': new_user}
+    session['user_id'], new_user = check_user(
+        session['email'], session['username'],  user_data['picture'])
+    # Response
+    body = {'username': user_data['name'],
+            'user_id': session['user_id'],
+            'new_user': new_user}
     return json_response(body, 200)
 
 
@@ -603,7 +663,7 @@ def profile_(user_id):
     try:
         user = User.query.filter_by(id=user_id).one()
     except sqlalchemy.orm.exc.NoResultFound:
-        abort(404)  # can be raised only on GET request; PATCH and DELETE are protected by check_ownership()
+        abort(404)
     if request.method == 'GET':
         # Return user's profile page
         return render_template('profile.html', user=user, games=user.games,
@@ -686,43 +746,52 @@ def game_finder():
     all_categories = GameCategory.query.all()
     games = []
     if len(request.args) > 0:
-        # build SQL query
+        # Build SQL query
         query = ''
         for key, value in request.args.iteritems():
             query = game_query_builder(key, value, query)
         query = query[:-5]
         print query
-        # get games satisfying the search criteria
+        # Get games satisfying the search criteria
         game_category = int(request.args['category'])
         if game_category == 0:
             games = Game.query.filter(sqlalchemy.text(query)).all()
         else:
-            # consider game category
+            # Consider game category
             games = (Game.query.filter(sqlalchemy.text(query)).filter(
                 Game.categories.any(GameCategory.id == game_category)).all())
-    return render_template('game-finder.html', games=games, all_categories=all_categories)
+    return render_template('game-finder.html', games=games,
+                           all_categories=all_categories)
 
 
 @app.route('/api/games')
 def api_games():
-    """Return list of games, with all their attributes, satisfying the criteria provided in the request query string.
+    """Return list of games, with all their attributes, satisfying
+    the criteria provided in the request query string.
 
-    Valid query args are of two types: ownership type and game-attribute type. The function first builds two sets of
-    games, ownership set with games satisfying the ownership criteria and game-attribute set with games satisfying
-    the game-attribute criteria; an intersection of these two sets is then returned to the user. Specifying no criteria
-    of a given type will result in the corresponding set with all the games in the database.
+    Valid query args are of two types: ownership type and game-attribute type.
+    The function first builds two sets of games, ownership set with
+    games satisfying the ownership criteria and game-attribute set with
+    games satisfying the game-attribute criteria; an intersection of
+    these two sets is then returned to the user. Specifying no criteria
+    of a given type will result in the corresponding set with all
+    the games in the database.
 
     Valid arguments are as follows:
-        ownership:
-            club=1 | include all games owned by the club
-            user=INTEGER | value denotes user id | include all games owned by the user | multiple args=YES
-        game-attribute:
-            id=INTEGER | value denotes game id | multiple args=YES
+        ownership type:
+            club=1: include all games owned by the club
+            user=INTEGER: include all games owned by the user,
+                value denotes user id,
+                multiple args=YES
+        game-attribute type:
+            id=INTEGER: value denotes game id,
+                multiple args=YES
             name=NAME
-            category=INTEGER | value denotes category id | multiple args=YES
+            category=INTEGER: value denotes category id,
+                multiple args=YES
             rating-min=[1-10]
-            players-from=INTEGER | query must also include players-to
-            players-to=INTEGER | query must also include players-from
+            players-from=INTEGER: query must also include players-to
+            players-to=INTEGER: query must also include players-from
             time-from=INTEGER
             time-to=INTEGER
             weight-min=[1-5]
@@ -731,19 +800,21 @@ def api_games():
     The response is in JSON.
     """
     if not validate_api_game_query(request.args):
-        return error_response('One or more query parameters have invalid key and/or value', 400)
-    # club filter
+        return error_response(
+            'One or more query parameters have invalid key and/or value', 400)
+    # Club filter
     games_club = []
     if request.args.get('club') == '1':
-        games_club = [club_game.game_id for club_game in db_session.query(clubs_games_assoc).all()]
+        games_club = db_session.query(clubs_games_assoc).all()
+        games_club = [club_game.game_id for club_game in games_club]
     print 'games_club', games_club
-    # user filter
+    # User filter
     users = [int(user_id) for user_id in request.args.getlist('user')]
-    games_user = [game.game_id for game in
-                  db_session.query(users_games_assoc)
-                      .filter(users_games_assoc.c.user_id.in_(users)).all()]
-    print 'games_user', games_user
-    # attribute filter
+    games_users = db_session.query(users_games_assoc).filter(
+        users_games_assoc.c.user_id.in_(users)).all()
+    games_users = [game.game_id for game in games_users]
+    print 'games_user', games_users
+    # Game attribute filter
     query = ''
     for key, value in request.args.iteritems(multi=True):
         query = game_query_builder(key, value, query)
@@ -752,17 +823,19 @@ def api_games():
     if len(categories) == 0:
         attr_games = Game.query.filter(sqlalchemy.text(query)).all()
     else:
-        # consider game categories
+        # Consider game categories
         attr_games = (Game.query.filter(sqlalchemy.text(query)).filter(
             Game.categories.any(GameCategory.id.in_(categories))).all())
     attr_games = [game.id for game in attr_games]
     print 'games_query', attr_games
-    # union of club and user games
-    owned_games = set(games_club) | set(games_user)
+    # Union of club and user games
+    owned_games = set(games_club) | set(games_users)
     print 'union', owned_games
-    # intersection of owned_games and attr_games
-    games_id = (set(attr_games) & owned_games) if len(owned_games) > 0 else set(attr_games)
+    # Intersection of owned_games and attr_games
+    games_id = ((set(attr_games) & owned_games)
+                if len(owned_games) > 0 else set(attr_games))
     print 'intersection', games_id
+    # Prepare the response
     games = Game.query.filter(Game.id.in_(games_id)).all()
     games_dict = sql_to_dicts(*games)
     return jsonify(games=games_dict)
@@ -788,11 +861,13 @@ def api_info():
     for key, value in request.args.iteritems():
         if d.get(key) and value == '1':
             sql_all_dict = sql_to_dicts(*d[key])
-            info[key] = dicts_purge(sql_all_dict, *['id', 'name', 'year_published'])
+            info[key] = dicts_purge(sql_all_dict,
+                                    *['id', 'name', 'year_published'])
     return jsonify(**info)
 
 
 if __name__ == '__main__':
-    app.secret_key = '\xa7B\xf8w\x13\xcb\x12\x07\xd5\x95_C\x91\xd5\x8c\xf6\\\xb3\xb7\x16\x0b\xab+\x94'
+    app.secret_key = ('\xa7B\xf8w\x13\xcb\x12\x07\xd5\x95_C\x91\xd5\x8c\xf6'
+                      '\\\xb3\xb7\x16\x0b\xab+\x94')
     app.debug = True
     app.run(host='0.0.0.0', port=5000)
