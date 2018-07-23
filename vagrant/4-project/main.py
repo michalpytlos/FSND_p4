@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 from flask import (Flask, render_template, url_for, request, redirect, session,
-                   abort, make_response, jsonify)
+                   abort, make_response, jsonify, flash)
 import sqlalchemy
 import sqlalchemy.orm.exc
 import requests
@@ -518,6 +518,7 @@ def club_():
     club = Club.query.filter_by(id=1).scalar()
     attributes = request.get_json()['data']['attributes']
     patch_resource(attributes, club)
+    flash('Club info updated!')
     return '', 204
 
 
@@ -538,6 +539,7 @@ def club_game_add():
         club.games.append(game)
         db_session.add(club)
         db_session.commit()
+        flash('Game added to the collection!')
         return redirect(url_for('home'))
 
 
@@ -552,6 +554,7 @@ def club_game_(game_id):
     club.games.remove(game)
     db_session.commit()
     clear_games(game)
+    flash('Game removed from the collection!')
     return '', 204
 
 
@@ -574,6 +577,7 @@ def post_add():
         post = Post(**post_data)
         db_session.add(post)
         db_session.commit()
+        flash('Post created!')
         return redirect(url_for('home'))
 
 
@@ -589,11 +593,13 @@ def post_(post_id):
         attributes = request.get_json()['data']['attributes']
         attributes.append({'name': 'edited', 'value': int(time.time())})
         patch_resource(attributes, post)
+        flash('Post edited!')
         return '', 204
     else:
         # Delete Post
         db_session.delete(post)
         db_session.commit()
+        flash('Post deleted!')
         return '', 204
 
 
@@ -641,6 +647,7 @@ def g_connect():
 def g_disconnect():
     """Sign out user."""
     sign_out()
+    flash('Signed out!')
     return '', 204
 
 
@@ -672,6 +679,7 @@ def profile_(user_id):
         # Update Profile
         attributes = request.get_json()['data']['attributes']
         patch_resource(attributes, user)
+        flash('Profile updated!')
         return '', 204
     else:
         # Delete Profile
@@ -679,7 +687,8 @@ def profile_(user_id):
         db_session.delete(user)
         db_session.commit()
         clear_games(*games)
-        sign_out()  # remove the user from session
+        sign_out()
+        flash('Profile deleted!')
         return '', 204
 
 
@@ -700,6 +709,7 @@ def profile_game_add(user_id):
         user.games.append(game)
         db_session.add(user)
         db_session.commit()
+        flash('Game added to the collection!')
         return redirect(url_for('profile_', user_id=user_id))
 
 
@@ -714,6 +724,7 @@ def profile_game_(user_id, game_id):
     user.games.remove(game)
     db_session.commit()
     clear_games(game)
+    flash('Game removed from the collection!')
     return '', 204
 
 
@@ -737,6 +748,7 @@ def game_(game_id):
             setattr(bgame, key, value)
         bgame.categories = bgg_categories
         db_session.commit()
+        flash('Game info updated!')
         return redirect(url_for('game_', game_id=game_id))
 
 

@@ -30,7 +30,15 @@
     </ul>
   </nav>
   <header class="header">{% block header %}{% endblock %}</header>
-  <div id="login-msg"></div>
+  <div id="flash-msg" class="flash-msg">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <h4>{{ message }}</h4>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
   {% block content %}
   {% endblock %}
 <script src="{{ url_for('static', filename='ajaxForm.js') }}"></script>

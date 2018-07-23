@@ -24,7 +24,7 @@ function signInCallback(authResult) {
 	  url: 'http://localhost:5000/gconnect',
 	  contentType: 'application/json',
 	  success: function(info) {
-		$('#login-msg').html('Login successful! <br> Hello ' + info.username + '<br> Redirecting...');
+		$('#flash-msg').html('Login successful! <br> Hello ' + info.username + '<br> Redirecting...');
 		if (info.new_user) {
 		  setTimeout(function(){window.location.href='/users/{}/new'.replace('{}', info.user_id);}, 2000);
 		} else {
