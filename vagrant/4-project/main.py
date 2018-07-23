@@ -1,4 +1,12 @@
 #!/usr/bin/env python2.7
+
+"""Main module of the BoardGameClub app.
+
+To be run as a script.
+"""
+
+__author__ = "Michal Pytlos"
+
 from flask import (Flask, render_template, url_for, request, redirect, session,
                    abort, make_response, jsonify, flash)
 import sqlalchemy
@@ -23,14 +31,17 @@ CLIENT_ID = json.loads(
     open('client_secret.json', 'r').read())['web']['client_id']
 
 
+###################
+# Csrf protection #
+###################
+
+# Implemented as per:
+# http://flask.pocoo.org/snippets/3/' posted by Dan Jacob on 2010-05-03
+# but with only one token per session.
+
 @app.before_request
 def csrf_protect():
-    """Abort create, update and delete requests without correct csrf tokens.
-
-    Csrf protection as per:
-    'http://flask.pocoo.org/snippets/3/' posted by Dan Jacob on 2010-05-03
-    but with only one token per session.
-    """
+    """Abort create, update and delete requests without correct csrf tokens."""
     if request.method in ('POST', 'PATCH', 'DELETE'):
         print 'validating csrf token'
         token = session.get('_csrf_token')
@@ -54,20 +65,28 @@ def generate_csrf_token():
     return session['_csrf_token']
 
 
-app.jinja_env.globals['csrf_token'] = generate_csrf_token
-
-
 def random_string():
     """Create a random string."""
     chars = string.ascii_letters + string.digits
     return ''.join([chars[random.randint(0, 61)] for i in range(20)])
 
 
+app.jinja_env.globals['csrf_token'] = generate_csrf_token
+
+
+###############################
+# Database session management #
+###############################
+
 @app.teardown_appcontext
 def remove_session(exception=None):
     """Remove database session at the end of each request."""
     db_session.remove()
 
+
+####################################
+# Authentication and authorisation #
+####################################
 
 @app.before_request
 def ownership_required():
@@ -136,6 +155,10 @@ def validate_id_token(token, token_jwt):
     ):
         return True
 
+
+##################################################
+# Miscellaneous functions used by view functions #
+##################################################
 
 def json_response(body, code):
     """Build a JSON response."""
@@ -470,6 +493,10 @@ def sign_out():
         abort(401)
 
 
+#############################
+# Functions used externally #
+#############################
+
 def init_club_info():
     """Add Board Game Club to the database.
 
@@ -484,7 +511,7 @@ def init_club_info():
 def add_club_admin(email):
     """Add user to club admins.
 
-    Function used by the external program add_admin.
+    Function used by the program AddAdmin.
     """
     user = User.query.filter_by(email=email).scalar()
     if not user:
@@ -498,7 +525,9 @@ def add_club_admin(email):
         print 'User added to club admins'
 
 
-# View functions
+##################
+# View functions #
+##################
 
 @app.route('/')
 def home():
@@ -601,54 +630,6 @@ def post_(post_id):
         db_session.commit()
         flash('Post deleted!')
         return '', 204
-
-
-@app.route('/gconnect', methods=['POST'])
-def g_connect():
-    """Sign in user."""
-    # Additional csrf check
-    if not request.headers.get('X-Requested-With'):
-        abort(403)
-    # Get one-time code from the end-user
-    auth_code = request.get_json().get('auth_code')
-    # Exchange one-time code for id_token and access_token
-    try:
-        credentials = client.credentials_from_clientsecrets_and_code(
-            CLIENT_SECRET_FILE,
-            ['https://www.googleapis.com/auth/drive.appdata', 'profile',
-             'email'],
-            auth_code)
-    except client.FlowExchangeError:
-        return error_response('Failed to upgrade one-time authorization code.',
-                              401)
-    # Validate id_token
-    if not validate_id_token(credentials.id_token, credentials.id_token_jwt):
-        return error_response('id token is not valid', 500)
-    # Get user info from access token
-    userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
-    params = {'access_token': credentials.access_token, 'alt': 'json'}
-    answer = requests.get(userinfo_url, params=params)
-    user_data = answer.json()
-    # Store user info in the session for later use
-    session['email'] = credentials.id_token['email']
-    session['username'] = user_data['name']
-    session['access_token'] = credentials.access_token
-    # If the user does not exist, add him to the database
-    session['user_id'], new_user = check_user(
-        session['email'], session['username'],  user_data['picture'])
-    # Response
-    body = {'username': user_data['name'],
-            'user_id': session['user_id'],
-            'new_user': new_user}
-    return json_response(body, 200)
-
-
-@app.route('/gdisconnect', methods=['POST'])
-def g_disconnect():
-    """Sign out user."""
-    sign_out()
-    flash('Signed out!')
-    return '', 204
 
 
 @app.route('/users/<int:user_id>/new')
@@ -877,6 +858,58 @@ def api_info():
                                     *['id', 'name', 'year_published'])
     return jsonify(**info)
 
+
+@app.route('/gconnect', methods=['POST'])
+def g_connect():
+    """Sign in user."""
+    # Additional csrf check
+    if not request.headers.get('X-Requested-With'):
+        abort(403)
+    # Get one-time code from the end-user
+    auth_code = request.get_json().get('auth_code')
+    # Exchange one-time code for id_token and access_token
+    try:
+        credentials = client.credentials_from_clientsecrets_and_code(
+            CLIENT_SECRET_FILE,
+            ['https://www.googleapis.com/auth/drive.appdata', 'profile',
+             'email'],
+            auth_code)
+    except client.FlowExchangeError:
+        return error_response('Failed to upgrade one-time authorization code.',
+                              401)
+    # Validate id_token
+    if not validate_id_token(credentials.id_token, credentials.id_token_jwt):
+        return error_response('id token is not valid', 500)
+    # Get user info from access token
+    userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
+    params = {'access_token': credentials.access_token, 'alt': 'json'}
+    answer = requests.get(userinfo_url, params=params)
+    user_data = answer.json()
+    # Store user info in the session for later use
+    session['email'] = credentials.id_token['email']
+    session['username'] = user_data['name']
+    session['access_token'] = credentials.access_token
+    # If the user does not exist, add him to the database
+    session['user_id'], new_user = check_user(
+        session['email'], session['username'],  user_data['picture'])
+    # Response
+    body = {'username': user_data['name'],
+            'user_id': session['user_id'],
+            'new_user': new_user}
+    return json_response(body, 200)
+
+
+@app.route('/gdisconnect', methods=['POST'])
+def g_disconnect():
+    """Sign out user."""
+    sign_out()
+    flash('Signed out!')
+    return '', 204
+
+
+########
+# Main #
+########
 
 if __name__ == '__main__':
     app.secret_key = ('\xa7B\xf8w\x13\xcb\x12\x07\xd5\x95_C\x91\xd5\x8c\xf6'

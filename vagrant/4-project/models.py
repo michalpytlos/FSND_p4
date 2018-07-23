@@ -1,3 +1,8 @@
+"""SQLAlchemy model and table definitions.
+
+Module of the BoardGameClub app.
+"""
+
 from sqlalchemy import Table, Column, ForeignKey, Integer, String, Numeric
 from sqlalchemy.orm import relationship
 from database import Base

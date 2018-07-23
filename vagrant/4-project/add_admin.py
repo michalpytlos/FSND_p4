@@ -1,4 +1,12 @@
 #!/usr/bin/env python2.7
+
+"""AddAdmin program.
+
+To be run as a script.
+
+Part of the BoardGameClub app.
+"""
+
 from main import add_club_admin
 
 if __name__ == '__main__':

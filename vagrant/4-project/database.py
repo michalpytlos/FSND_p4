@@ -1,4 +1,7 @@
 #!/usr/bin/env python2.7
+
+"""Database module of the BoardGameClub app."""
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
