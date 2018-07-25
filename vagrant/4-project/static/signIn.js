@@ -3,7 +3,7 @@ function iniGAuth() {
   console.log('Initalizing googleAuth object')
   gapi.load('auth2', function() {
 	auth2 = gapi.auth2.init({
-	  client_id: '956019190263-o6a7gusm85fhipgr316rtq2ck41dj7ht.apps.googleusercontent.com',
+	  client_id: $('meta[name=_client_id]').attr("content"),
 	});
   });
  }

@@ -29,6 +29,7 @@ app = Flask(__name__)
 CLIENT_SECRET_FILE = 'client_secret.json'
 CLIENT_ID = json.loads(
     open('client_secret.json', 'r').read())['web']['client_id']
+app.jinja_env.globals['client_id'] = CLIENT_ID
 
 
 ###################
