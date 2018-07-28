@@ -829,9 +829,16 @@ def api_games():
     games_id = ((set(attr_games) & owned_games)
                 if len(owned_games) > 0 else set(attr_games))
     print 'intersection', games_id
-    # Prepare the response
+    # Get all games satisfying the search criteria
     games = Game.query.filter(Game.id.in_(games_id)).all()
     games_dict = sql_to_dicts(*games)
+    # Add category info to each game_dict
+    games_categories = {}
+    for game in games:
+        games_categories[game.id] = [game_category.name for game_category in
+                                     game.categories]
+    for game_dict in games_dict:
+        game_dict['category'] = games_categories[game_dict['id']]
     return jsonify(games=games_dict)
 
 
