@@ -18,7 +18,7 @@ This program is meant to serve as a web application for a board game club and of
 4. Game-finder page:
   *  **All users:** list all games satisfying the provided search criteria.
 5. Game API endpoint:
-  * **All users:** list games, with all their attributes, satisfying the criteria provided in the request query string. Accepts ownership and game-attribute search criteria. The response is in JSON.
+  * **All users:** list games, with all their attributes, satisfying the criteria provided in the query string. The response is in JSON.
 6. Info API endpoint:
   * **All users:** provide basic information on all game-categories, users and games held in the database. The response is in JSON.
 
@@ -55,17 +55,21 @@ Create OAuth 2.0 client ID and client secret:
   6. Set **Authorized JavaScript origins** to `http://localhost:5000`
   7. Set **Authorized redirect URIs** to `http://localhost:5000`
   8. Press **Create**.
-  9. Download the client secret JSON file, rename it to **client_secret.json** and save to the directory containing **main.py**.
+  9. Download the client secret JSON file, rename it to **client_secret.json** and save to the directory containing **run.py**.
 
 ### 2.3. Starting the app
-1. Navigate to the directory containing **main.py** using the command line.
-2. Run the program as script: `python main.py`
+  1. Navigate to the directory containing **run.py** using the command line.
+  2. Run the program as script: `python run.py`
 
-### 2.4. Web pages
+### 2.4. Creating new database
+1. Navigate to the directory containing **init_db.py** using the command line.
+2. Run the program as script: `python init_db.py`
+
+### 2.5. Web pages
 * Home page URL: `http://localhost:5000`
 * All other app's pages can be accessed using the navigation bar and the page-embedded links.
 
-### 2.5. Adding new club admins
+### 2.6. Adding new club admins
 1. Navigate to the directory containing **add_admin.py** using the command line.
 2. Run the program as script: `python add_admin.py`
 3. Follow program's instructions.
@@ -73,7 +77,13 @@ Create OAuth 2.0 client ID and client secret:
 ## 3. API endpoints
 ### 3.1. Game API endpoint
 * URL: `http://localhost:5000/api/games`
-* Lists games, with all their attributes, satisfying the criteria provided in the request query string.
+* Serves information on games satisfying the criteria provided in the query string.
+#### Getting info on an arbitrary game
+* To get info about an arbitrary game, specify it's id in the query string; for example:
+  * `http://localhost:5000/api/games?id=1` returns info on the game with id=1.
+  * `http://localhost:5000/api/games?id=3&id=7&id=8` returns info on the games with id in (3, 7, 8).       
+* To find id's of all the games in database, use the Info API endpoint: `http://localhost:5000/api/info?games=1`
+#### Complex queries
 * Valid query args are of two types: ownership type and game-attribute type. The endpoint first builds two sets of games, ownership set with games satisfying the ownership criteria and game-attribute set with games satisfying the game-attribute criteria; an intersection of these two sets is then returned to the user. Specifying no criteria of a given type will result in the corresponding set with all the games in the database.
 * Valid arguments of the **ownership** type are given in the table below:
 
@@ -99,11 +109,11 @@ Create OAuth 2.0 client ID and client secret:
 
 [1] Include only games with number of players interval containing [players-from, players-to] interval. For the query to be accepted either both or none of these two arguments must be specified. <br>
 [2] Include only games with playing time interval intersecting [time-from, time-to] interval. The default values of players-from and players-to are zero and infinity respectively.
-
-* For example, query string `?club=1&user=1&user=2&category=3&category=4&rating-min=7` would result in the following:
+#### Example complex query string
+* `?club=1&user=1&user=2&category=3&category=4&rating-min=7` would result in the following:
   * {ownership set} = {games owned by the club} ∪ {games owned by user 1} ∪ {games owned by user 2}
-  * {game-attribute set} = {games belonging to category 1 or 2} ∩ {games with rating >= 7}
-  * {game set returned by the API} = {ownership set} ∩ {game attribute-set}
+  * {game-attribute set} = {games belonging to category 3 or 4} ∩ {games with rating >= 7}
+  * {game set returned by the API} = {ownership set} ∩ {game-attribute set}
 
 ### 3.2. Info API endpoint
 * URL: `http://localhost:5000/api/info`

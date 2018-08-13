@@ -1,14 +1,5 @@
-#!/usr/bin/env python2.7
-
-"""Main module of the BoardGameClub app.
-
-To be run as a script.
-"""
-
-__author__ = "Michal Pytlos"
-
-from flask import (Flask, render_template, url_for, request, redirect, session,
-                   abort, make_response, jsonify, flash)
+from flask import (render_template, url_for, request, redirect, session, abort,
+                   make_response, jsonify, flash)
 import sqlalchemy
 import sqlalchemy.orm.exc
 import requests
@@ -19,17 +10,11 @@ import string
 import random
 from decimal import Decimal
 from oauth2client import client
-from database import db_session
-from models import (Club, Game, Post,  User, GameCategory, ClubAdmin,
-                    clubs_games_assoc, users_games_assoc)
-
-
-app = Flask(__name__)
-
-CLIENT_SECRET_FILE = 'client_secret.json'
-CLIENT_ID = json.loads(
-    open('client_secret.json', 'r').read())['web']['client_id']
-app.jinja_env.globals['client_id'] = CLIENT_ID
+from boardgameclub import app
+from boardgameclub.database import db_session
+from boardgameclub.models import (Club, Game, Post,  User, GameCategory,
+                                  ClubAdmin, clubs_games_assoc,
+                                  users_games_assoc)
 
 
 ###################
@@ -150,7 +135,7 @@ def validate_id_token(token, token_jwt):
         token['iss'] in ('https://accounts.google.com',
                          'accounts.google.com') and
         # Is it intended for this app?
-        token['aud'] == CLIENT_ID and
+        token['aud'] == app.config['CLIENT_ID'] and
         # Is it still valid (not expired)?
         token['exp'] > int(time.time())
     ):
@@ -492,38 +477,6 @@ def sign_out():
     except KeyError:
         print 'Not signed in'
         abort(401)
-
-
-#############################
-# Functions used externally #
-#############################
-
-def init_club_info():
-    """Add Board Game Club to the database.
-
-    Function used only when creating a new database.
-    Call this function directly from a Python interpreter.
-    """
-    club = Club(name='Board Game Club')
-    db_session.add(club)
-    db_session.commit()
-
-
-def add_club_admin(email):
-    """Add user to club admins.
-
-    Function used by the program AddAdmin.
-    """
-    user = User.query.filter_by(email=email).scalar()
-    if not user:
-        print 'User not found'
-    elif user.club_admin:
-        print 'User is already an admin'
-    else:
-        admin = ClubAdmin(user_id=user.id)
-        db_session.add(admin)
-        db_session.commit()
-        print 'User added to club admins'
 
 
 ##################
@@ -878,7 +831,7 @@ def g_connect():
     # Exchange one-time code for id_token and access_token
     try:
         credentials = client.credentials_from_clientsecrets_and_code(
-            CLIENT_SECRET_FILE,
+            app.config['CLIENT_SECRET_FILE'],
             ['https://www.googleapis.com/auth/drive.appdata', 'profile',
              'email'],
             auth_code)
@@ -913,14 +866,3 @@ def g_disconnect():
     sign_out()
     flash('Signed out!')
     return '', 204
-
-
-########
-# Main #
-########
-
-if __name__ == '__main__':
-    app.secret_key = ('\xa7B\xf8w\x13\xcb\x12\x07\xd5\x95_C\x91\xd5\x8c\xf6'
-                      '\\\xb3\xb7\x16\x0b\xab+\x94')
-    app.debug = True
-    app.run(host='0.0.0.0', port=5000)
