@@ -215,8 +215,8 @@ def bgg_game_info(bgg_id):
     for bg_prop in properties:
         game_info[bg_prop] = root.find(bg_prop.replace('_', '')).get('value')
 
-    game_info['bgg_link'] = 'https://boardgamegeek.com/boardgame/{}/{}'.format(
-        bgg_id, game_info['name'])
+    game_info['bgg_link'] = 'https://boardgamegeek.com/boardgame/{}'.format(
+        bgg_id)
     # categories
     categories = []
     for link in root.findall('link'):
