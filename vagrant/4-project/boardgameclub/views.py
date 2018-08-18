@@ -306,36 +306,44 @@ def make_posts_read(posts):
     return posts_read
 
 
-def game_query_builder(key, value, query):
+def game_query_builder(key, value, query, param_dict):
     """Modify textual sql query in order take into account an additional
     WHERE condition.
 
     Args:
         key (str): condition name.
         value (str): condition value.
-        query (str): SQL query.
+        query (str): textual SQL statement.
+        param_dict (dict): dict with params for textual SQL statement.
 
     Returns:
         str: modified SQL query.
     """
-    d = {'id': "id in ({value})",
-         'name': "name LIKE '{value}%'",
-         'rating-min': 'bgg_rating>={value}',
-         'players-from': 'min_players<={value}',
-         'players-to': 'max_players>={value}',
-         'time-from': 'max_playtime>={value}',
-         'time-to': 'min_playtime<={value}',
-         'weight-min': 'weight>={value}',
-         'weight-max': 'weight<={value}',
+    d = {'id': 'id in (:{val})',
+         'name': 'name LIKE :{val}',
+         'rating-min': 'bgg_rating>=:{val}',
+         'players-from': 'min_players<=:{val}',
+         'players-to': 'max_players>=:{val}',
+         'time-from': 'max_playtime>=:{val}',
+         'time-to': 'min_playtime<=:{val}',
+         'weight-min': 'weight>=:{val}',
+         'weight-max': 'weight<=:{val}',
          }
     if len(value) == 0 or value == 'any' or not d.get(key):
-        # do nothing
-        return query
-    elif key == 'id' and 'id in' in query:
+        # Do nothing
+        return query, param_dict
+    # Add condition value to param_dict
+    param_key = 'val_{}'.format(len(param_dict) + 1)
+    if key == 'name':
+        value = '{}%'.format(value)
+    param_dict[param_key] = value
+    # Modify SQL statement
+    if key == 'id' and 'id in' in query:
         pos = query.find(')', query.find('id in'))
-        return query[:pos] + ', ' + value + query[pos:]
+        query = query[:pos] + ', :' + param_key + query[pos:]
     else:
-        return query + d[key].format(value=value) + ' AND '
+        query = query + d[key].format(val=param_key) + ' AND '
+    return query, param_dict
 
 
 def clear_games(*games):
@@ -695,18 +703,25 @@ def game_finder():
     if len(request.args) > 0:
         # Build SQL query
         query = ''
+        param_dict = {}
         for key, value in request.args.iteritems():
-            query = game_query_builder(key, value, query)
+            query, param_dict = game_query_builder(key, value, query,
+                                                   param_dict)
         query = query[:-5]
         print query
+        print param_dict
         # Get games satisfying the search criteria
         game_category = int(request.args['category'])
         if game_category == 0:
-            games = Game.query.filter(sqlalchemy.text(query)).all()
+            games = Game.query.filter(sqlalchemy.text(query).params(
+                param_dict)).all()
         else:
             # Consider game category
-            games = (Game.query.filter(sqlalchemy.text(query)).filter(
-                Game.categories.any(GameCategory.id == game_category)).all())
+            games = (
+                Game.query.filter(sqlalchemy.text(query).params(param_dict))
+                .filter(Game.categories.any(GameCategory.id == game_category))
+                .all()
+            )
     return render_template('game-finder.html', games=games,
                            all_categories=all_categories)
 
@@ -763,16 +778,20 @@ def api_games():
     print 'games_user', games_users
     # Game attribute filter
     query = ''
+    param_dict = {}
     for key, value in request.args.iteritems(multi=True):
-        query = game_query_builder(key, value, query)
+        query, param_dict = game_query_builder(key, value, query, param_dict)
     query = query[:-5]
     categories = request.args.getlist('category')
     if len(categories) == 0:
-        attr_games = Game.query.filter(sqlalchemy.text(query)).all()
+        attr_games = Game.query.filter(sqlalchemy.text(query).params(
+            param_dict)).all()
     else:
         # Consider game categories
-        attr_games = (Game.query.filter(sqlalchemy.text(query)).filter(
-            Game.categories.any(GameCategory.id.in_(categories))).all())
+        attr_games = (
+            Game.query.filter(sqlalchemy.text(query).params(param_dict))
+            .filter(Game.categories.any(GameCategory.id.in_(categories))).all()
+        )
     attr_games = [game.id for game in attr_games]
     print 'games_query', attr_games
     # Union of club and user games
