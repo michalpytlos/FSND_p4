@@ -125,3 +125,47 @@ Create OAuth 2.0 client ID and client secret:
 | users=1     | return basic info on all users          |
 | categories=1| return basic info on all game categories|
 | games=1     | return basic info on all games          |
+
+## 4. File structure
+
+File structure of the program is outlined below.
+
+```
+run.py
+init_db.py
+add_admin.py
+config.py
+bgclub.db
+client_secret.json
+boardgameclub/
+  __init__.py
+  views.py
+  database.py
+  models.py
+  static/
+    ajaxForm.js
+    signIn.js
+    style.css
+  templates/
+```
+
+The components are briefly described in the table below.
+
+| File/directory     | Description                                            |
+|--------------------| -------------------------------------------------------|
+| run.py             | Invoke to start up a development server                |
+| init_db.py         | Invoke to create and initialize a new SQLite database for the club |
+| add_admin.py       | Invoke to add a club admin                             |
+| config.py          | Configuration file                                     |
+| bgclub.db          | Example SQLite database                                |
+| client_secret.json | Client secret json file. Not included. Create as per §2.2 |
+| boardgameclub/     | Directory containing the application                   |
+| \_\_init\_\_.py    |                                                        |
+| views.py           | View functions, csrf protection, authentication and authorisation |
+| database.py        | SQLAlchemy engine configuration                        |
+| models.py          | Model and table definitions                            |
+| static/            | Directory containing static files                      |
+| ajaxForm.js        | JS code managing forms and ajax requests to the server |
+| signIn.js          | JS code managing Google sign-in                        |
+| style.css          | Styling                                                |
+| templates/         | Directory containing Jinja2 HTML templates             |
