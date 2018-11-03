@@ -23,8 +23,12 @@ def add_club_admin(user_email):
         print 'User added to club admins'
 
 
-if __name__ == '__main__':
+def main():
     # Add user to club admins
     email = raw_input(
         'Add user to club admins by entering his/her email address: ')
     add_club_admin(email)
+
+
+if __name__ == '__main__':
+    main()

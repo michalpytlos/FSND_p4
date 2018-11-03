@@ -1,0 +1,4 @@
+include boardgameclub/data/bgclub.db
+recursive-include boardgameclub/scripts *
+recursive-include boardgameclub/templates *
+recursive-include boardgameclub/static *

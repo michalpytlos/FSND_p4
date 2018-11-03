@@ -22,7 +22,11 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
-if __name__ == '__main__':
+def main():
     init_db()
     init_club_info()
     print 'Database initialized'
+
+
+if __name__ == '__main__':
+    main()
