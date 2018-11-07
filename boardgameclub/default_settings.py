@@ -7,6 +7,7 @@ class Config(object):
                   '\xb7\x16\x0b\xab+\x94')
     DB_URL = 'sqlite:///' + pkg_resources.resource_filename(
         'boardgameclub', 'data/bgclub.db')
+    APP_URL = 'http://localhost:5000'
 
 
 class DevelopmentConfig(Config):

@@ -61,8 +61,12 @@ For more information about instance folders and how to change their default loca
 #### 4. Create config file
 Default application settings from **boardgameclub.default_settings** are overridden by the contents of a separate configuration file, **config.py** located in the instance folder, if it exists.
 
-Create **config.py** file in the instance folder and set **SECRET_KEY** to your own value.
-To use your own database, set **DB_URL** to the value as per [docs.sqlalchemy.org](https://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls). See also [flask.pocoo.org](http://flask.pocoo.org/docs/1.0/config/#builtin-configuration-values) for a list of configration values used internally by Flask and therefore available in **boardgameclub**.
+Create **config.py** file in the instance folder and set the following cofiguration values:
+* **SECRET_KEY** to a long random string of bytes. See [flask.pocoo.org](http://flask.pocoo.org/docs/1.0/config/#SECRET_KEY) for more information on the secret key.
+* **APP_URL** to the origin URL of your instance of the boardgameclub application. The URL should consist of the scheme and authority components only.
+* **DB_URL** to the value as per [docs.sqlalchemy.org](https://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls).
+
+See also [flask.pocoo.org](http://flask.pocoo.org/docs/1.0/config/#builtin-configuration-values) for a list of configration values used internally by Flask and therefore available in **boardgameclub**.
 
 #### 5. Create OAuth 2.0 client ID and client secret
   1. Go to https://console.developers.google.com/apis

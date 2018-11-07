@@ -21,7 +21,7 @@ function signInCallback(authResult) {
 	console.log('Sending one-time code to the server...')
 	$.ajax({
 	  method: 'POST',
-	  url: 'http://localhost:5000/gconnect',
+	  url: $('meta[name=_origin]').attr("content") + '/gconnect',
 	  contentType: 'application/json',
 	  success: function(info) {
 		$('#flash-msg').html('Login successful! <br> Hello ' + info.username + '<br> Redirecting...');
@@ -51,7 +51,7 @@ $('#signoutButton').click(function() {
 	// Sign out user
 	$.ajax({
 	  method: 'POST',
-	  url: 'http://localhost:5000/gdisconnect',
+	  url: $('meta[name=_origin]').attr("content") + '/gdisconnect',
 	  contentType: 'application/json',
 	  success: function() {window.location.href='/';},
 	  error: function(jqXHR, textStatus, errorThrown){
@@ -64,4 +64,3 @@ $('#signoutButton').click(function() {
 	  })
 	});
 })
-
