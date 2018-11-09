@@ -45,7 +45,7 @@ class User(Base):
     email = Column(String(80), nullable=False)
     name = Column(String(80), nullable=False)
     about = Column(String(1000))
-    picture = Column(String(80))
+    picture = Column(String(250))
     games = relationship("Game",
                          secondary=users_games_assoc,
                          back_populates="users")
@@ -78,9 +78,9 @@ class Game(Base):
     """
     __tablename__ = 'games'
     id = Column(Integer, primary_key=True)
-    name = Column(String(80), nullable=False)
+    name = Column(String(250), nullable=False)
     year_published = Column(Integer, nullable=False)
-    image = Column(String(80), nullable=False)
+    image = Column(String(250), nullable=False)
     min_age = Column(Integer)
     weight = Column(Numeric(4, 3))
     min_playtime = Column(Integer)
@@ -89,7 +89,7 @@ class Game(Base):
     max_players = Column(Integer)
     bgg_rating = Column(Numeric(4, 3))
     bgg_id = Column(Integer)
-    bgg_link = Column(String(80))
+    bgg_link = Column(String(250))
     categories = relationship("GameCategory",
                               secondary=games_categories_assoc,
                               back_populates="games")
@@ -131,7 +131,7 @@ class Club(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(80), nullable=False)
     about = Column(String(1000))
-    picture = Column(String(80))
+    picture = Column(String(250))
     games = relationship("Game",
                          secondary=clubs_games_assoc,
                          back_populates="clubs")
@@ -167,7 +167,7 @@ class Post(Base):
     __tablename__ = 'posts'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
-    subject = Column(String(80), nullable=False)
+    subject = Column(String(250), nullable=False)
     body = Column(String(1000), nullable=False)
     posted = Column(Integer, nullable=False)
     edited = Column(Integer)
